@@ -100,7 +100,7 @@ void CTracker::track(const std::string& video_path, const bool display)
     // Uncomment the line below to select a different bounding box 
     bbox_2d = cv::selectROI(frame, false); 
     // Display bounding box. 
-    cv::rectangle(frame, bbox_2d, cv::Scalar( 255, 0, 0 ), 2, 1 ); 
+    cv::rectangle(frame, bbox_2d, cv::Scalar( 1, 0, 0 ), 2, 1 ); 
 
     cv::imshow("Tracking", frame); 
     if (m_islegacy)
@@ -145,11 +145,11 @@ void CTracker::track(const std::string& video_path, const bool display)
                 // Tracking success : Draw the tracked object
                 if (m_islegacy)
                 {
-                    cv::rectangle(frame, bbox_2d, cv::Scalar( 255, 0, 0 ), 2, 1 );
+                    cv::rectangle(frame, bbox_2d, cv::Scalar( 1, 0, 0 ), 2, 1 );
                 }
                 else
                 {
-                    cv::rectangle(frame, bbox, cv::Scalar( 255, 0, 0 ), 2, 1 );
+                    cv::rectangle(frame, bbox, cv::Scalar( 1, 0, 0 ), 2, 1 );
                 }
             }
             else

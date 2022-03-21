@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.1.0)
-project( UAVOS_TRACKER )
+project(UAVOS_TRACKER VERSION "0.0.0")
 
 if(NOT WIN32)
   string(ASCII 27 Esc)
@@ -50,6 +50,7 @@ ENDIF()
 
 message("OpenCV_VERSION : ${BoldGreen} ${OpenCV_VERSION} ${ColourReset}")
 
+
 # adding CMAKE_CXX_FLAGS properly
 add_compile_options(
   -Wno-return-type 
@@ -66,8 +67,13 @@ add_compile_definitions(
 )
 
 
+set(OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/bin)
+file(MAKE_DIRECTORY ${OUTPUT_DIRECTORY})
+SET(EXECUTABLE_OUTPUT_PATH ${OUTPUT_DIRECTORY})
+
 add_subdirectory(src)
 
+configure_file(config.module.json ${OUTPUT_DIRECTORY}/config.module.json COPYONLY)
 
 
 message ("${Yellow}=========================================================================${ColourReset}")
