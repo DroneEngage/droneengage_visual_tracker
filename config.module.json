@@ -3,7 +3,6 @@
     "module_id"                   : "VIS_TRK_PRO",
     "module_key"                  : "c2a9bb21-bb00-4683-a45e-269341f4509d",
     
-    "module_class"                : "computing", 
     "module_features"             : ["TRK"], 
    
     "s2s_udp_target_ip": "127.0.0.1",
@@ -30,9 +29,9 @@
         TRACKER_CSRT        = 7,  
     };
     */
-    "tracker_algorithm_index"     : 3,
+    "tracker_algorithm_index"     : 7,
 
     "module_messages"             : [1005, 1042, 1043, 1044],
     // Specific Module Parameters
-    "video_device"                : "/dev/video0"
+    "video_device"                : "/dev/video2"
 }

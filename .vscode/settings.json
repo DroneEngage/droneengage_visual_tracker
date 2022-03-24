@@ -41,6 +41,7 @@
         "streambuf": "cpp",
         "typeinfo": "cpp",
         "bit": "cpp",
-        "variant": "cpp"
+        "variant": "cpp",
+        "deque": "cpp"
     }
 }

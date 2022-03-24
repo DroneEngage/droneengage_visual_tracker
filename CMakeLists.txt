@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.1.0)
-project(UAVOS_TRACKER VERSION "0.0.0")
+
 
 if(NOT WIN32)
   string(ASCII 27 Esc)
@@ -20,6 +20,17 @@ if(NOT WIN32)
   set(BoldCyan    "${Esc}[1;36m")
   set(BoldWhite   "${Esc}[1;37m")
 endif()
+
+
+if ( ${CMAKE_SOURCE_DIR} STREQUAL ${CMAKE_BINARY_DIR} )
+message ("${Red} In-source builds not allowed! Create a build directory and run CMake from there.  ${ColourReset}")
+message( FATAL_ERROR “In-source builds not allowed! Create a build directory and run CMake from there. ” )
+exit(1)
+endif()
+
+project(UAVOS_TRACKER VERSION "0.0.0")
+
+
 
 SET (CMAKE_C_COMPILER /usr/bin/gcc)
 SET (CMAKE_CXX_COMPILER /usr/bin/g++)
