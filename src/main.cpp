@@ -3,7 +3,9 @@
 #include <iostream>
 
 #include "./helpers/colors.hpp"
+#include "./helpers/helpers.hpp"
 #include "./helpers/getopt_cpp.hpp"
+#include "./helpers/util_rpi.hpp"
 #include "version.hpp"
 #include "./uavos_common/messages.hpp"
 #include "tracker.hpp"
@@ -58,7 +60,7 @@ static std::string hardware_serial;
 
 void uninit ()
 {
-    uavos::tracker::CTracker::getInstance().uninit();
+    cTrackerMain.uninit();
 	m_exit = true;
 }
 
@@ -93,7 +95,7 @@ void quit_handler( int sig )
  */
 void _version (void)
 {
-    std::cout << std::endl << _SUCCESS_CONSOLE_BOLD_TEXT_ "Drone-Engage Tracker Module version " << _INFO_CONSOLE_TEXT << version_string << _NORMAL_CONSOLE_TEXT_ << std::endl;
+    std::cout << std::endl << _SUCCESS_CONSOLE_BOLD_TEXT_ "Drone-Engage Tracker Module " << _INFO_CONSOLE_TEXT << "version " << version_string << _NORMAL_CONSOLE_TEXT_ << std::endl;
 }
 
 
@@ -324,6 +326,12 @@ void onReceive (const char * message, int len)
     
 }
 
+void initSerial()
+{
+    helpers::CUtil_Rpi::getInstance().get_cpu_serial(hardware_serial);
+    hardware_serial.append(get_linux_machine_id());
+}
+
 void initArguments (int argc, char *argv[])
 {
     int opt;
@@ -389,6 +397,9 @@ void init (int argc, char *argv[])
 	signal(SIGINT,quit_handler);
     signal(SIGTERM,quit_handler);
     
+    //initialize serial
+    initSerial();
+
     initArguments (argc, argv);
 
     // Reading Configuration
@@ -403,8 +414,7 @@ void init (int argc, char *argv[])
 
     const Json& jsonConfig = cConfigFile.GetConfigJSON();
 
-    uavos::tracker::CTracker::getInstance().init(( enum uavos::tracker::ENUM_TRACKER_TYPE) jsonConfig["tracker_algorithm_index"].get<int>()); //uavos::tracker::ENUM_TRACKER_TYPE::TRACKER_TLD);
-    uavos::tracker::CTracker::getInstance().track(jsonConfig["video_device"].get<std::string>(), true);
+    cTrackerMain.init();
 }
 
 
@@ -414,11 +424,10 @@ int main (int argc, char *argv[])
 {
 	init(argc, argv);
 
-    #ifdef DEBUG
-        std::cout << "DEBUG" <<  std::endl;
-    #elif defined(RELEASE)
-        std::cout << "RELEASE" <<  std::endl;
-    #endif
+    while (!exit_me)
+    {
+        std::this_thread::sleep_for(std::chrono::seconds(1));
+    }
 }
 
 

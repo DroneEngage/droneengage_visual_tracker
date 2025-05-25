@@ -8,6 +8,7 @@
 #include <vector>
 #include <sstream>
 #include <math.h>
+#include <cstdint>
 
 uint64_t get_time_usec();
 

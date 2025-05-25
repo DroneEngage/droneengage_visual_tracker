@@ -28,21 +28,25 @@ void CTrackerAndruavMessageParser::parseMessage (Json &andruav_message, const ch
         switch (messageType)
         {
 
-            case TYPE_AndruavMessage_Arm:
+            case TYPE_AndruavMessage_TrackingTarget:
             {
-                // A  : bool arm/disarm
-                // [D]: bool force 
-                if (!validateField(message, "A", Json::value_t::boolean)) return ;
-                
-                bool arm = message["A"].get<bool>();
-                bool force = false;
-                if (message.contains("D") == true)
+                // a: center X
+                // b: center Y
+                // r: radius
+
+                if ((message.contains("s")) && (message["s"].get<bool>() == true))
                 {
-                    if (!validateField(message, "D", Json::value_t::boolean)) return ;
-                
-                    force = message["D"].get<bool>();
+                    // stop tracking
+                    m_trackerMain.stopTracking();
+                    return ;
                 }
-                //mavlinksdk::CMavlinkCommand::getInstance().doArmDisarm(arm,force);
+                if (!validateField(message, "a", Json::value_t::number_float)) return ;
+                if (!validateField(message, "b", Json::value_t::number_float)) return ;
+                if (!validateField(message, "r", Json::value_t::number_unsigned)) return ;
+                
+                m_trackerMain.startTracking(message["a"].get<float>(),
+                                            message["b"].get<float>(), 
+                                            message["r"].get<float>());
             }
             break;
 

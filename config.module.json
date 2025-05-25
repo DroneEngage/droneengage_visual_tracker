@@ -8,7 +8,7 @@
     "s2s_udp_target_ip": "127.0.0.1",
     "s2s_udp_target_port": "60000", 
     "s2s_udp_listening_ip": "127.0.0.1", 
-    "s2s_udp_listening_port": "60013", 
+    "s2s_udp_listening_port": "60053", 
     
     //TYPE_AndruavMessage_RemoteExecute
     //TYPE_AndruavMessage_Tatabo3Hadaf 			= 1042
@@ -31,7 +31,6 @@
     */
     "tracker_algorithm_index"     : 7,
 
-    "module_messages"             : [1005, 1042, 1043, 1044],
     // Specific Module Parameters
-    "video_device"                : "/dev/video2"
+    "video_device"                : "/dev/video1"
 }

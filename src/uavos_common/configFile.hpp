@@ -40,6 +40,7 @@ namespace uavos
             void initConfigFile (const char* fileURL);
             void reloadFile ();
             const Json& GetConfigJSON();
+            std::string getFileName () const {return m_file_url;};
 
         protected:
             void ReadFile (const char * fileURL);

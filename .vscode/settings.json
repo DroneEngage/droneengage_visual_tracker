@@ -42,6 +42,26 @@
         "typeinfo": "cpp",
         "bit": "cpp",
         "variant": "cpp",
-        "deque": "cpp"
+        "deque": "cpp",
+        "fstream": "cpp",
+        "cinttypes": "cpp",
+        "forward_list": "cpp",
+        "map": "cpp",
+        "numeric": "cpp",
+        "optional": "cpp",
+        "sstream": "cpp",
+        "valarray": "cpp",
+        "chrono": "cpp",
+        "thread": "cpp",
+        "compare": "cpp",
+        "format": "cpp",
+        "ctime": "cpp",
+        "concepts": "cpp",
+        "condition_variable": "cpp",
+        "mutex": "cpp",
+        "numbers": "cpp",
+        "ratio": "cpp",
+        "semaphore": "cpp",
+        "stop_token": "cpp"
     }
 }

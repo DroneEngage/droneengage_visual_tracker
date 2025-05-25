@@ -12,6 +12,7 @@
 #ifndef TRACKER_H
 #define TRACKER_H
 
+#include <thread>
 #include <opencv2/opencv.hpp>
 #include <opencv2/tracking.hpp>
 #include <opencv2/tracking/tracking_legacy.hpp>
@@ -37,55 +38,76 @@ namespace tracker
         TRACKER_CSRT        = 7,  
     };
     
+
+    class CCallBack_Tracker
+    {
+        public:
+            virtual void onTrack (const float& x, const float& y, const float& width, const float& height) = 0;
+            virtual void onTrackStatusChanged (const bool& track) = 0;
+    };
+
     class CTracker 
     {
 
         public:
 
-            static CTracker& getInstance()
-            {
-                static CTracker instance;
-
-                return instance;
-            }
-
-            CTracker(CTracker const&)           = delete;
-            void operator=(CTracker const&)                 = delete;
-
-        private:
-
-            CTracker() {};
+            CTracker(CCallBack_Tracker *callback_tracker):m_valid_track(false),m_callback_tracker(callback_tracker){
+                
+            };
 
 
-        public:
-            
             ~CTracker() 
             {
-
+                uninit();
             };
 
             
 
         public:
-            void init (const enum ENUM_TRACKER_TYPE tracker_type);
-            void uninit();
-            void track(const std::string& video_path, const bool display);
+            bool init (const enum ENUM_TRACKER_TYPE tracker_type, const std::string& video_path);
+            bool uninit();
+            void track(const float x, const float y, const float radius, const bool display);
+            void stop();
             const std::string getActiveTracker() 
             {
                 return trackerTypes[(int)m_active_tracker];
             };
 
-        protected:
+            bool isTrackingValid() const 
+            { 
+                return m_valid_track;
+            };
 
+        protected:
+            
+            float revScaleX(const float& x) const
+            {
+                return (x / m_image_width);
+            };
+
+            float revScaleY(const float& y) const
+            {
+                return (y / m_image_height);
+            };
 
         private:
             bool m_process = false;
+            bool m_valid_track;
+
             bool m_islegacy = false;
+            std::string m_video_path;
             enum ENUM_TRACKER_TYPE m_active_tracker;
             // List of tracker types in OpenCV 3.4.1
             const std::string trackerTypes[8] = {"BOOSTING", "MIL", "KCF", "TLD","MEDIANFLOW", "GOTURN", "MOSSE", "CSRT"};
             cv::Ptr<cv::Tracker> m_tracker;
 	        cv::Ptr<cv::legacy::Tracker> m_legacy_tracker;
+
+            int m_image_width  = 640;
+            int m_image_height = 480;
+            int m_image_fps = 5;
+            
+            cv::VideoCapture video_capture_cap;
+            CCallBack_Tracker * m_callback_tracker;
     };
 
 }
