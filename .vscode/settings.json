@@ -76,6 +76,14 @@
         "stack": "cpp",
         "unordered_set": "cpp",
         "locale": "cpp",
-        "bitset": "cpp"
+        "bitset": "cpp",
+        "charconv": "cpp",
+        "typeindex": "cpp",
+        "__bit_reference": "cpp",
+        "__locale": "cpp",
+        "__threading_support": "cpp",
+        "__verbose_abort": "cpp",
+        "ios": "cpp",
+        "print": "cpp"
     }
 }
