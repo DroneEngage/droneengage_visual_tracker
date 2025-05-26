@@ -75,7 +75,7 @@ void _versionOnly (void)
  */
 void _version (void)
 {
-    std::cout << std::endl << _SUCCESS_CONSOLE_BOLD_TEXT_ "Drone-Engage Tracker Module " << _INFO_CONSOLE_TEXT << "version " << version_string << _NORMAL_CONSOLE_TEXT_ << std::endl;
+    std::cout << std::endl << _SUCCESS_CONSOLE_BOLD_TEXT_ "Drone-Engage Visual Tracker Module " << _INFO_CONSOLE_TEXT << "version " << version_string << _NORMAL_CONSOLE_TEXT_ << std::endl;
 }
 
 
@@ -253,6 +253,9 @@ void init (int argc, char *argv[])
     // Reading Configuration
     std::cout << std::endl << _SUCCESS_CONSOLE_BOLD_TEXT_ << "=================== " << "STARTING PLUGIN ===================" << _NORMAL_CONSOLE_TEXT_ << std::endl;
     _version();
+
+    std::cout << _LOG_CONSOLE_BOLD_TEXT << std::asctime(std::localtime(&instance_time_stamp)) << instance_time_stamp << _INFO_CONSOLE_BOLD_TEXT<< " seconds since the Epoch" << std::endl;
+    
 
     // Define module features
     

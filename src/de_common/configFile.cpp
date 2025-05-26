@@ -23,11 +23,14 @@ void CConfigFile::initConfigFile (const char* fileURL)
 {
     m_file_url = std::string(fileURL);
 
-    std::cout << _LOG_CONSOLE_BOLD_TEXT<< "Read config file: " << _INFO_CONSOLE_TEXT << fileURL << "\033[0m ...."  << std::endl;
+    std::cout << _LOG_CONSOLE_BOLD_TEXT<< "Read config file: " << _INFO_CONSOLE_TEXT << fileURL << "\033[0m ...."  ;
     
     CConfigFile::ReadFile (m_file_url.c_str());
     
     CConfigFile::ParseData (m_fileContents.str());
+
+    std::cout << _SUCCESS_CONSOLE_TEXT_ << " succeeded "  << _NORMAL_CONSOLE_TEXT_ << std::endl;
+
 }
 
 

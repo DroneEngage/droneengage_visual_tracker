@@ -3,6 +3,7 @@
 #include <opencv2/core/ocl.hpp>
 
 #include "../helpers/colors.hpp"
+#include "video.hpp"
 #include "tracker.hpp"
 
 // Headers for V4L2
@@ -15,51 +16,6 @@ using namespace de::tracker;
 
 std::thread m_framesThread;
 
-/**
- * @brief Queries the current resolution of a V4L2 video device.
- *
- * This function attempts to open the specified video device and use the
- * VIDIOC_G_FMT ioctl to retrieve its current width and height.
- *
- * @param video_device_path The path to the V4L2 video device (e.g., "/dev/video0").
- * @param width Reference to an unsigned int to store the retrieved width.
- * @param height Reference to an unsigned int to store the retrieved height.
- * @return true if the resolution was successfully retrieved, false otherwise.
- */
-bool CTracker::getVideoResolution(const std::string& video_device_path, unsigned int& width, unsigned int& height)
-{
-    // Initialize output parameters
-    width = 0;
-    height = 0;
-
-    // Check if the path looks like a V4L2 device
-    if (video_device_path.rfind("/dev/video", 0) != 0) {
-        std::cerr << "Error: " << video_device_path << " does not appear to be a V4L2 device path (does not start with /dev/video)." << std::endl;
-        return false;
-    }
-
-    int fd = open(video_device_path.c_str(), O_RDONLY | O_NONBLOCK);
-    if (fd < 0) {
-        std::cerr << "Error: Failed to open V4L2 device " << video_device_path << ": " << strerror(errno) << std::endl;
-        return false;
-    }
-
-    struct v4l2_format fmt = {0};
-    fmt.type = V4L2_BUF_TYPE_VIDEO_CAPTURE; // We are querying a capture device
-
-    if (ioctl(fd, VIDIOC_G_FMT, &fmt) == 0) {
-        width = fmt.fmt.pix.width;
-        height = fmt.fmt.pix.height;
-        std::cout << "Successfully queried V4L2 device " << video_device_path
-                  << ". Resolution: " << width << "x" << height << std::endl;
-        close(fd);
-        return true;
-    } else {
-        std::cerr << "Error: Failed to get format for V4L2 device " << video_device_path << ": " << strerror(errno) << std::endl;
-        close(fd);
-        return false;
-    }
-}
 
 
 bool CTracker::initTargetVirtualVideoDevice(const std::string &target_video_device)
@@ -175,7 +131,7 @@ bool CTracker::init(const enum ENUM_TRACKER_TYPE tracker_type, const std::string
     unsigned int detected_width = 0;
     unsigned int detected_height = 0;
 
-    if (getVideoResolution(m_video_path, detected_width, detected_height))
+    if (CVideo::getVideoResolution(m_video_path, detected_width, detected_height))
     {
         m_image_width = detected_width;
         m_image_height = detected_height;
@@ -186,7 +142,7 @@ bool CTracker::init(const enum ENUM_TRACKER_TYPE tracker_type, const std::string
     {
         // TODO: send error message to WebClient please.
 
-        std::cout << _ERROR_CONSOLE_BOLD_TEXT_ << "FATAL ERROR:" << _INFO_CONSOLE_TEXT << " could not open camera at " << _ERROR_CONSOLE_TEXT_ << video_path << _NORMAL_CONSOLE_TEXT_ << std::endl;
+        std::cout << _ERROR_CONSOLE_BOLD_TEXT_ << "FATAL ERROR:" << _BK_RED_WHITE_TEXT_ << " could not open camera at " << _ERROR_CONSOLE_TEXT_ << video_path << _NORMAL_CONSOLE_TEXT_ << std::endl;
 
         return false;
     }
@@ -262,6 +218,8 @@ void CTracker::track2(const float x, const float y, const float radius, const bo
 {
 
     cv::Mat frame;
+    cv::Rect2d bbox_2d;
+    cv::Rect bbox;
 
     if (!video_capture_cap.isOpened())
     {
@@ -283,7 +241,8 @@ void CTracker::track2(const float x, const float y, const float radius, const bo
     // Define initial bounding box
     float scaled_x = x * m_image_width;
     float scaled_y = y * m_image_height;
-
+    bool is_tracking_active = (x > 0);
+    std::cout << "1" << std::endl;
     if (scaled_x < 0)
     {
         scaled_x = 0;
@@ -301,55 +260,55 @@ void CTracker::track2(const float x, const float y, const float radius, const bo
     {
         scaled_y = m_image_height - radius;
     }
-
+    std::cout << "2" << std::endl;
 #ifdef DDEBUG
     std::cout << "scaled_x,scaled_y:" << std::to_string(scaled_x) << ":" << std::to_string(scaled_y) << std::endl;
 #endif
 
-    cv::Rect2d bbox_2d(scaled_x, scaled_y, radius, radius);
-    cv::Rect bbox(scaled_x, scaled_y, radius, radius);
+    bbox_2d = cv::Rect2d (scaled_x, scaled_y, radius, radius);
+    bbox = cv::Rect (scaled_x, scaled_y, radius, radius);
+    std::cout << "3" << std::endl;
 
-    if (m_islegacy)
+    if (is_tracking_active)
     {
-        m_legacy_tracker->init(frame, bbox_2d);
+        if (m_islegacy)
+        {
+            m_legacy_tracker->init(frame, bbox_2d);
+        }
+        else
+        {
+            m_tracker->init(frame, bbox);
+        }
     }
-    else
-    {
-        m_tracker->init(frame, bbox);
-    }
-
     m_process = true;
 
     while (m_process)
     {
-        bool valid_track;
+        bool valid_track = false;
         video_capture_cap >> frame;
-        if (!frame.empty())
+        if (frame.empty())
         {
-
-            if (m_islegacy)
-            {
-                valid_track = m_legacy_tracker->update(frame, bbox_2d);
-            }
-            else
-            {
-                valid_track = m_tracker->update(frame, bbox);
-            }
-
-            if (valid_track != m_valid_track)
-            {
-                m_valid_track = valid_track;
-                if (m_callback_tracker != nullptr)
-                    m_callback_tracker->onTrackStatusChanged(m_valid_track);
-            }
-        }
-        else
-        {
-#ifdef DEBUG
-            std::cout << "empty frame" << std::endl;
-#endif
             continue;
         }
+            if (is_tracking_active)
+            {
+                if (m_islegacy)
+                {
+                    valid_track = m_legacy_tracker->update(frame, bbox_2d);
+                }
+                else
+                {
+                    valid_track = m_tracker->update(frame, bbox);
+                }
+
+                if (valid_track != m_valid_track)
+                {
+                    m_valid_track = valid_track;
+                    if (m_callback_tracker != nullptr)
+                        m_callback_tracker->onTrackStatusChanged(m_valid_track);
+                }
+            }
+        
 
         if (m_valid_track)
         {

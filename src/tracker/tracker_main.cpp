@@ -46,16 +46,19 @@ bool CTrackerMain::init()
         exit(1);
 	}
 
+
     if (target_video_device!="")
     {
-        // Stream to a virtual video driver even without tracking
+        // if Target video virtual device is specified then stream
+        // to a virtual video driver even without tracking
         bool display_video = false;
         const Json_de& jsonConfig = de::CConfigFile::getInstance().GetConfigJSON();
         if (jsonConfig.contains("display_video"))
         {
             display_video = jsonConfig["display_video"].get<bool>();
         }
-        m_tracker.get()->track(10,10, 10, display_video);
+        // x = -1 start streaming with no tracking
+        m_tracker.get()->track(-1,0, 0, display_video);
     }
     return true;
 }
