@@ -2,13 +2,11 @@
     // A name and GUID for this module
     "module_id"                   : "VIS_TRK_PRO",
     
-    "module_features"             : ["TRK"], 
-   
     "s2s_udp_target_ip": "127.0.0.1",
     "s2s_udp_target_port": "60000", 
     "s2s_udp_listening_ip": "127.0.0.1", 
     "s2s_udp_listening_port": "60053", 
-      "s2s_udp_packet_size": "8192",
+    "s2s_udp_packet_size": "8192",
 
     //TYPE_AndruavMessage_RemoteExecute
     //TYPE_AndruavMessage_Tatabo3Hadaf 			= 1042

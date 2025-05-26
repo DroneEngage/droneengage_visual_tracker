@@ -114,8 +114,6 @@ void _usage(void)
 
 void onReceive (const char * message, int len, Json_de jMsg)
 {
-    static bool bFirstReceived = false;
-        
     #ifdef DEBUG        
         std::cout << _INFO_CONSOLE_TEXT << "RX MSG: " << message << _NORMAL_CONSOLE_TEXT_ << std::endl;
     #endif
