@@ -21,7 +21,7 @@
 #include <opencv2/core/ocl.hpp>
 
 
-namespace uavos
+namespace de
 {
 namespace tracker
 {
@@ -51,7 +51,7 @@ namespace tracker
 
         public:
 
-            CTracker(CCallBack_Tracker *callback_tracker):m_valid_track(false),m_callback_tracker(callback_tracker){
+            CTracker(CCallBack_Tracker *callback_tracker):m_valid_track(false),m_callback_tracker(callback_tracker), m_target_video_path(""), m_target_video_active(false){
                 
             };
 
@@ -64,9 +64,10 @@ namespace tracker
             
 
         public:
-            bool init (const enum ENUM_TRACKER_TYPE tracker_type, const std::string& video_path);
+            bool init (const enum ENUM_TRACKER_TYPE tracker_type, const std::string& video_path, const std::string& target_video_device);
             bool uninit();
             void track(const float x, const float y, const float radius, const bool display);
+            void track2(const float x, const float y, const float radius, const bool display);
             void stop();
             const std::string getActiveTracker() 
             {
@@ -77,6 +78,11 @@ namespace tracker
             { 
                 return m_valid_track;
             };
+
+
+        protected:
+            bool getVideoResolution(const std::string& video_device_path, unsigned int& width, unsigned int& height);
+            bool initTargetVirtualVideoDevice(const std::string& target_video_device);
 
         protected:
             
@@ -89,6 +95,7 @@ namespace tracker
             {
                 return (y / m_image_height);
             };
+            
 
         private:
             bool m_process = false;
@@ -108,6 +115,14 @@ namespace tracker
             
             cv::VideoCapture video_capture_cap;
             CCallBack_Tracker * m_callback_tracker;
+            
+            std::string m_target_video_path;
+            
+            bool m_target_video_active = false;
+            int m_video_fd = -1;
+            int m_yuv_frame_size = 0;
+
+            bool m_virtual_device_opened = false;
     };
 
 }

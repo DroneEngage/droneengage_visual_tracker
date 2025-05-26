@@ -8,7 +8,9 @@
 #include <vector>
 #include <sstream>
 #include <math.h>
-#include <cstdint>
+
+#include "json_nlohmann.hpp"
+using Json_de = nlohmann::json;
 
 uint64_t get_time_usec();
 
@@ -21,6 +23,10 @@ std::vector<std::string> split_string_by_delimeter(const std::string& str, const
 std::vector<std::string> split_string_by_newline(const std::string& str);
 
 std::string removeComments(std::string prgm);
+
+extern bool is_ascii(const signed char *c, size_t len);
+
+extern bool validateField (const Json_de& message, const char *field_name, const Json_de::value_t& field_type);
 
 extern std::string get_linux_machine_id ();
 

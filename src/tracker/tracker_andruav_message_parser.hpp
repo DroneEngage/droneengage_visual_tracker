@@ -12,12 +12,12 @@
  * 
  */
 
-#include "./helpers/json.hpp"
+#include "../helpers/json.hpp"
 using Json = nlohmann::json;
 
 #include "tracker_main.hpp"
 
-namespace uavos
+namespace de
 {
 namespace tracker
 {
@@ -53,7 +53,7 @@ class CTrackerAndruavMessageParser
             }
 
         private:
-            uavos::tracker::CTrackerMain&  m_trackerMain = uavos::tracker::CTrackerMain::getInstance();
+            de::tracker::CTrackerMain&  m_trackerMain = de::tracker::CTrackerMain::getInstance();
 };
 
 };

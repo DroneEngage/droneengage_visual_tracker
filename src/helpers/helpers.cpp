@@ -125,3 +125,33 @@ std::string get_linux_machine_id ()
         return std::string("");
     }
 }
+
+
+bool is_ascii(const signed char *c, size_t len) {
+  for (size_t i = 0; i < len; i++) {
+    if(c[i] < 0) return false;
+  }
+  return true;
+}
+
+
+/**
+ * @brief 
+ *  returns true if field exist and of specified type
+ * @param message Json_de object
+ * @param field_name requested field name
+ * @param field_type specified type
+ * @return true if found and of specified type
+ * @return false 
+ */
+bool validateField (const Json_de& message, const char *field_name, const Json_de::value_t& field_type)
+{
+    if (
+        (message.contains(field_name) == false) 
+        || (message[field_name].type() != field_type)
+        ) 
+    
+        return false;
+
+    return true;
+}

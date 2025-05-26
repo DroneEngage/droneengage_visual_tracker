@@ -3,10 +3,10 @@
 #define CCONFIGFILE_H
 
 #include <sstream>
-#include "../helpers/json.hpp"
-using Json = nlohmann::json;
+#include "../helpers/json_nlohmann.hpp"
+using Json_de = nlohmann::json;
 
-namespace uavos
+namespace de
 {
     class CConfigFile 
     {
@@ -39,9 +39,9 @@ namespace uavos
         public:
             void initConfigFile (const char* fileURL);
             void reloadFile ();
-            const Json& GetConfigJSON();
+            const Json_de& GetConfigJSON();
             std::string getFileName () const {return m_file_url;};
-
+            
         protected:
             void ReadFile (const char * fileURL);
             void ParseData (std::string jsonString);
@@ -50,7 +50,7 @@ namespace uavos
         private:
             std::string m_file_url;
             std::stringstream m_fileContents;
-            Json m_ConfigJSON;
+            Json_de m_ConfigJSON;
         
 
     };

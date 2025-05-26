@@ -1,15 +1,20 @@
 #ifndef TRACKER_MAIN_H
 #define TRACKER_MAIN_H
 
-#include "./uavos_common/uavos_module.hpp"
+#include "../de_common/de_module.hpp"
+#include "../de_common/de_common_callback.hpp"
 #include "tracker.hpp"
+#include "tracker_facade.hpp"
 
-namespace uavos
+#include "../helpers/json_nlohmann.hpp"
+using Json_de = nlohmann::json;
+
+namespace de
 {
 namespace tracker
 {
 
-    class CTrackerMain: public uavos::CMODULE, uavos::tracker::CCallBack_Tracker
+    class CTrackerMain: public de::tracker::CCallBack_Tracker, de::comm::CCommon_Callback
     {
 
         public:
@@ -36,10 +41,6 @@ namespace tracker
 
             CTrackerMain()
             {
-                // Define module features
-                m_module_features.push_back("TRK");
-
-                m_module_class="computing";
             }
 
         public:
@@ -55,8 +56,8 @@ namespace tracker
 
         public:
             
-            bool init() override;
-            bool uninit() override;
+            bool init() ;
+            bool uninit() ;
             
         
         public:
@@ -64,35 +65,10 @@ namespace tracker
             void startTracking(const float x, const float y, const float radius);
             void stopTracking();
 
-            /**
-             * @details register callback function to send message using it.
-             * 
-             * @param sendJMSG of type @link SEND_JMSG_CALLBACK @endlink 
-             */
-            void registerSendJMSG (SEND_JMSG_CALLBACK sendJMSG) override
-            {
-                m_sendJMSG = sendJMSG;
-            };            
 
-            /**
-             * @details register callback function to send message using it.
-             * 
-             * @param sendBMSG of type @link SEND_BMSG_CALLBACK @endlink 
-             */
-            void registerSendBMSG (SEND_BMSG_CALLBACK sendBMSG) override
-            {
-                m_sendBMSG = sendBMSG;
-            };            
-
-            /**
-             * @details register call back to send InterModule remote execute message.
-             * 
-             * @param sendMREMSG of type @link SEND_MREMSG_CALLBACK @endlink 
-             */
-            void registerSendMREMSG (SEND_MREMSG_CALLBACK sendMREMSG) override
-            {
-                m_sendMREMSG = sendMREMSG;
-            };      
+        public:
+            //CCommon_Callback
+            void OnConnectionStatusChangedWithAndruavServer (const int status) {};
         
         public:
             //CCacdllBack_Tracker
@@ -104,11 +80,8 @@ namespace tracker
             
             bool m_exit_thread;
 
-            SEND_JMSG_CALLBACK      m_sendJMSG = NULL;
-            SEND_BMSG_CALLBACK      m_sendBMSG = NULL;
-            SEND_MREMSG_CALLBACK    m_sendMREMSG = NULL;
-
-            std::unique_ptr<uavos::tracker::CTracker> m_tracker;
+            std::unique_ptr<de::tracker::CTracker> m_tracker;
+            de::tracker::CTracker_Facade& m_trackerFacade = de::tracker::CTracker_Facade::getInstance();
     };
 
 };

@@ -1,23 +1,22 @@
 #include <stdio.h>
 #include <iostream>
 
-#include "./helpers/colors.hpp"
-#include "./uavos_common/configFile.hpp"
-#include "./uavos_common/messages.hpp"
+#include "../helpers/colors.hpp"
+#include "../de_common/configFile.hpp"
+#include "../de_common/messages.hpp"
 #include "tracker.hpp"
 #include "tracker_main.hpp"
 
 
 
 
-
-using namespace uavos::tracker;
+using namespace de::tracker;
 
 
 
 bool CTrackerMain::init()
 {
-    Json m_jsonConfig = CConfigFile::getInstance().GetConfigJSON();
+    Json_de m_jsonConfig = CConfigFile::getInstance().GetConfigJSON();
     
     if (!m_jsonConfig.contains("tracker_algorithm_index"))
     {
@@ -34,14 +33,30 @@ bool CTrackerMain::init()
     }
 
     m_tracker = std::make_unique<CTracker>(CTracker(this));
-
-    bool res = m_tracker.get()->init(m_jsonConfig["tracker_algorithm_index"], m_jsonConfig["video_device"]);
+    std::string target_video_device = "";
+    if (m_jsonConfig.contains("target_video_device"))
+    {
+        target_video_device = m_jsonConfig["target_video_device"];
+    }
+    
+    bool res = m_tracker.get()->init(m_jsonConfig["tracker_algorithm_index"], m_jsonConfig["video_device"], target_video_device);
     if (res == false)
     {
         std::cout << _ERROR_CONSOLE_BOLD_TEXT_ << "FATAL ERROR:" << _INFO_CONSOLE_TEXT << " Failed to initialize tracker. " <<  _NORMAL_CONSOLE_TEXT_ << std::endl;
         exit(1);
 	}
 
+    if (target_video_device!="")
+    {
+        // Stream to a virtual video driver even without tracking
+        bool display_video = false;
+        const Json_de& jsonConfig = de::CConfigFile::getInstance().GetConfigJSON();
+        if (jsonConfig.contains("display_video"))
+        {
+            display_video = jsonConfig["display_video"].get<bool>();
+        }
+        m_tracker.get()->track(10,10, 10, display_video);
+    }
     return true;
 }
 
@@ -59,7 +74,14 @@ void CTrackerMain::startTracking(const float x, const float y, const float radiu
 {
     m_tracker.get()->stop();
 
-    m_tracker.get()->track(x,y,radius, true);
+    bool display_video = false;
+    const Json_de& jsonConfig = de::CConfigFile::getInstance().GetConfigJSON();
+    if (jsonConfig.contains("display_video"))
+    {
+        display_video = jsonConfig["display_video"].get<bool>();
+    }
+
+    m_tracker.get()->track(x,y,radius, display_video);
 }
 
 void CTrackerMain::stopTracking()
@@ -71,7 +93,7 @@ void CTrackerMain::stopTracking()
 void CTrackerMain::onTrack (const float& x, const float& y, const float& width, const float& height) 
 {
    static int counter=0;
-    Json targets = Json::array();
+    Json_de targets = Json_de::array();
     targets.push_back({
         {"a",x},
         {"b",y},
@@ -80,22 +102,10 @@ void CTrackerMain::onTrack (const float& x, const float& y, const float& width, 
         {"n","target"}
     });
 
-    Json message =
-        {
-            {"t", targets}
-            // you can add r as radius
-        };
-
-    if (m_sendJMSG != NULL)
-    { 
-        // counter= counter +1;
-        // if (counter%5!=0) 
-        // {
-        //     std::cout << "skip" << std::endl;
-        //     return ;
-        // }
-        m_sendJMSG (std::string(""), message, TYPE_AndruavMessage_TrackingTargetLocation, true);
-    }
+    m_trackerFacade.sendTrackingTargetsLocation(
+        std::string(""),
+        targets
+    );
 }
 
 

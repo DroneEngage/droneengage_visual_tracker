@@ -1,8 +1,8 @@
 #include <iostream>
-#include "./uavos_common/messages.hpp"
+#include "../de_common/messages.hpp"
 #include "tracker_andruav_message_parser.hpp"
 
-using namespace uavos::tracker;
+using namespace de::tracker;
 
 /**
  * @brief Parse messages receuved from uavos_comm"

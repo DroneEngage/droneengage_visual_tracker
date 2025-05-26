@@ -62,6 +62,20 @@
         "numbers": "cpp",
         "ratio": "cpp",
         "semaphore": "cpp",
-        "stop_token": "cpp"
+        "stop_token": "cpp",
+        "future": "cpp",
+        "shared_mutex": "cpp",
+        "hash_map": "cpp",
+        "any": "cpp",
+        "span": "cpp",
+        "__node_handle": "cpp",
+        "__split_buffer": "cpp",
+        "list": "cpp",
+        "queue": "cpp",
+        "set": "cpp",
+        "stack": "cpp",
+        "unordered_set": "cpp",
+        "locale": "cpp",
+        "bitset": "cpp"
     }
 }

@@ -1,7 +1,6 @@
 {   
     // A name and GUID for this module
     "module_id"                   : "VIS_TRK_PRO",
-    "module_key"                  : "c2a9bb21-bb00-4683-a45e-269341f4509d",
     
     "module_features"             : ["TRK"], 
    
@@ -9,7 +8,8 @@
     "s2s_udp_target_port": "60000", 
     "s2s_udp_listening_ip": "127.0.0.1", 
     "s2s_udp_listening_port": "60053", 
-    
+      "s2s_udp_packet_size": "8192",
+
     //TYPE_AndruavMessage_RemoteExecute
     //TYPE_AndruavMessage_Tatabo3Hadaf 			= 1042
     // TYPE_AndruavMessage_Tatabo3MarsoodAt     = 1043
@@ -32,5 +32,9 @@
     "tracker_algorithm_index"     : 7,
 
     // Specific Module Parameters
-    "video_device"                : "/dev/video1"
+    "video_device"                : "/dev/video0",
+    "target_video_device"         : "/dev/video2",
+
+    // Debugging
+    "display_video"              : false
 }

@@ -28,7 +28,9 @@ message( FATAL_ERROR “In-source builds not allowed! Create a build directory a
 exit(1)
 endif()
 
-project(UAVOS_TRACKER VERSION "0.0.0")
+SET (__APP__VERSION__ "0.2.0")
+add_definitions( -D__APP__VERSION__="${__APP__VERSION__}")
+project(DE_TRACKER VERSION ${__APP__VERSION__})
 
 
 
@@ -84,7 +86,7 @@ SET(EXECUTABLE_OUTPUT_PATH ${OUTPUT_DIRECTORY})
 
 add_subdirectory(src)
 
-configure_file(config.module.json ${OUTPUT_DIRECTORY}/config.module.json COPYONLY)
+configure_file(de_tracker.config.module.json ${OUTPUT_DIRECTORY}/de_tracker.config.module.json COPYONLY)
 
 
 message ("${Yellow}=========================================================================${ColourReset}")
