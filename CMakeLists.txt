@@ -40,8 +40,16 @@ SET (CMAKE_CXX_COMPILER /usr/bin/g++)
 #C++ Version
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
-find_package(OpenCV 4.5 REQUIRED )
 find_package(Threads REQUIRED)
+
+# Find OpenCV package
+find_package(OpenCV 4.5 REQUIRED )
+message(STATUS "OpenCV_INCLUDE_DIRS found: ${OpenCV_INCLUDE_DIRS}")
+
+
+
+include_directories( ${OpenCV_INCLUDE_DIRS} )
+
 
 
 #define default build
@@ -66,7 +74,7 @@ message("OpenCV_VERSION : ${BoldGreen} ${OpenCV_VERSION} ${ColourReset}")
 
 # adding CMAKE_CXX_FLAGS properly
 add_compile_options(
-  -Wno-return-type 
+  -Wno-return-type
   -Wno-address-of-packed-member
   $<$<CONFIG:DEBUG>:-g3>
   $<$<CONFIG:DEBUG>:-Og>
@@ -80,11 +88,22 @@ add_compile_definitions(
 )
 
 
+# Gather all source files
+file(GLOB folder_src "./src/*.cpp")
+file(GLOB folder_common "./src/de_common/*.cpp")
+file(GLOB folder_tracker "./src/tracker/*.cpp")
+file(GLOB folder_helpers "./src/helpers/*.cpp")
+set(files ${folder_src} ${folder_common} ${folder_tracker} ${folder_helpers})
+
+# Add the executable target and link its libraries
+add_executable(de_tracker ${files})
+target_link_libraries(de_tracker Threads::Threads ${OpenCV_LIBS})
+
+
 set(OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/bin)
 file(MAKE_DIRECTORY ${OUTPUT_DIRECTORY})
 SET(EXECUTABLE_OUTPUT_PATH ${OUTPUT_DIRECTORY})
 
-add_subdirectory(src)
 
 configure_file(de_tracker.config.module.json ${OUTPUT_DIRECTORY}/de_tracker.config.module.json COPYONLY)
 
