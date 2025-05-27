@@ -35,7 +35,7 @@ bool CTracker::initTargetVirtualVideoDevice(const std::string &output_video_devi
     }
     
     cv::Mat frame;
-    video_capture_cap >> frame;
+    video_capture >> frame;
     cv::Mat yuv_frame;
     cv::cvtColor(frame, yuv_frame, cv::COLOR_BGR2YUV_I420);
 
@@ -65,7 +65,7 @@ bool CTracker::initTargetVirtualVideoDevice(const std::string &output_video_devi
     {
         fprintf(stderr, "Failed to set video format on %s: %s\n", m_output_video_path.c_str(), strerror(errno));
         close(m_video_fd);
-        video_capture_cap.release(); // Release the input video capture
+        video_capture.release(); // Release the input video capture
         return 1;
     }
     fprintf(stderr, "Successfully set format for %s: %dx%d, pixformat YUV420\n",
@@ -137,8 +137,8 @@ bool CTracker::init(const enum ENUM_TRACKER_TYPE tracker_type, const std::string
         m_image_height = detected_height;
     }
 
-    video_capture_cap.open(video_path);
-    if (!video_capture_cap.isOpened())
+    video_capture.open(video_path);
+    if (!video_capture.isOpened())
     {
         // TODO: send error message to WebClient please.
 
@@ -153,24 +153,27 @@ bool CTracker::init(const enum ENUM_TRACKER_TYPE tracker_type, const std::string
 
     // Read the first frame to get its actual width and height
     
-    video_capture_cap.set(cv::CAP_PROP_POS_FRAMES, 0); // Rewind to start of video for actual tracking
+    video_capture.set(cv::CAP_PROP_POS_FRAMES, 0); // Rewind to start of video for actual tracking
 
-    video_capture_cap.set(
+    video_capture.set(
         cv::CAP_PROP_FRAME_WIDTH,
         m_image_width);
 
-    video_capture_cap.set(
+    video_capture.set(
         cv::CAP_PROP_FRAME_HEIGHT,
         m_image_height);
 
-    video_capture_cap.set(
+    video_capture.set(
         cv::CAP_PROP_FPS,
         m_image_fps);
+
+    video_capture.set(cv::CAP_PROP_FOURCC, cv::VideoWriter::fourcc('M', 'J', 'P', 'G'));
+
 
     // --- V4L2 Output Device Initialization ---
     if (!initTargetVirtualVideoDevice(output_video_device))
     {
-        video_capture_cap.release();
+        video_capture.release();
         return false;
     }
 
@@ -221,7 +224,7 @@ void CTracker::track2(const float x, const float y, const float radius, const bo
     cv::Rect2d bbox_2d;
     cv::Rect bbox;
 
-    if (!video_capture_cap.isOpened())
+    if (!video_capture.isOpened())
     {
         // TODO: send error message to WebClient please.
 
@@ -230,7 +233,7 @@ void CTracker::track2(const float x, const float y, const float radius, const bo
         return;
     }
 
-    video_capture_cap >> frame;
+    video_capture >> frame;
     m_image_width = frame.cols;
     m_image_height = frame.rows;
 
@@ -285,7 +288,7 @@ void CTracker::track2(const float x, const float y, const float radius, const bo
     while (m_process)
     {
         bool valid_track = false;
-        video_capture_cap >> frame;
+        video_capture >> frame;
         if (frame.empty())
         {
             continue;
