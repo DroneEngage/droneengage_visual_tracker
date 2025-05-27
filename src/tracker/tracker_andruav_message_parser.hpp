@@ -13,7 +13,7 @@
  */
 
 #include "../helpers/json.hpp"
-using Json = nlohmann::json;
+using Json_de = nlohmann::json;
 
 #include "tracker_main.hpp"
 
@@ -35,13 +35,13 @@ class CTrackerAndruavMessageParser
 
         public:
 
-            void parseMessage (Json &andruav_message, const char * message, const int & message_length);
+            void parseMessage (Json_de &andruav_message, const char * message, const int & message_length);
             
         protected:
             
-            void parseRemoteExecute (Json &andruav_message);
+            void parseRemoteExecute (Json_de &andruav_message);
             
-            inline bool validateField (const Json& message, const char *field_name, const Json::value_t field_type)
+            inline bool validateField (const Json_de& message, const char *field_name, const Json_de::value_t field_type)
             {
                 if (
                     (message.contains(field_name) == false) 

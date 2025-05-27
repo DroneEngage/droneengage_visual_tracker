@@ -9,7 +9,7 @@ using namespace de::tracker;
  * 
  * @param andruav_message message received from uavos_comm
  */
-void CTrackerAndruavMessageParser::parseMessage (Json &andruav_message, const char * full_message, const int & full_message_length)
+void CTrackerAndruavMessageParser::parseMessage (Json_de &andruav_message, const char * full_message, const int & full_message_length)
 {
     const int messageType = andruav_message[ANDRUAV_PROTOCOL_MESSAGE_TYPE].get<int>();
     bool is_binary = !(full_message[full_message_length-1]==125 || (full_message[full_message_length-2]==125));   // "}".charCodeAt(0)  IS TEXT / BINARY Msg  
@@ -23,7 +23,7 @@ void CTrackerAndruavMessageParser::parseMessage (Json &andruav_message, const ch
 
     else
     {
-        Json message = andruav_message[ANDRUAV_PROTOCOL_MESSAGE_CMD];
+        Json_de message = andruav_message[ANDRUAV_PROTOCOL_MESSAGE_CMD];
         
         switch (messageType)
         {
@@ -40,9 +40,9 @@ void CTrackerAndruavMessageParser::parseMessage (Json &andruav_message, const ch
                     m_trackerMain.stopTracking();
                     return ;
                 }
-                if (!validateField(message, "a", Json::value_t::number_float)) return ;
-                if (!validateField(message, "b", Json::value_t::number_float)) return ;
-                if (!validateField(message, "r", Json::value_t::number_unsigned)) return ;
+                if (!validateField(message, "a", Json_de::value_t::number_float)) return ;
+                if (!validateField(message, "b", Json_de::value_t::number_float)) return ;
+                if (!validateField(message, "r", Json_de::value_t::number_unsigned)) return ;
                 
                 m_trackerMain.startTracking(message["a"].get<float>(),
                                             message["b"].get<float>(), 
@@ -61,11 +61,11 @@ void CTrackerAndruavMessageParser::parseMessage (Json &andruav_message, const ch
  * 
  * @param andruav_message 
  */
-void CTrackerAndruavMessageParser::parseRemoteExecute (Json &andruav_message)
+void CTrackerAndruavMessageParser::parseRemoteExecute (Json_de &andruav_message)
 {
-    const Json cmd = andruav_message[ANDRUAV_PROTOCOL_MESSAGE_CMD];
+    const Json_de cmd = andruav_message[ANDRUAV_PROTOCOL_MESSAGE_CMD];
     
-    if (!validateField(cmd, "C", Json::value_t::number_unsigned)) return ;
+    if (!validateField(cmd, "C", Json_de::value_t::number_unsigned)) return ;
                 
     const int remoteCommand = cmd["C"].get<int>();
     std::cout << "cmd: " << remoteCommand << std::endl;

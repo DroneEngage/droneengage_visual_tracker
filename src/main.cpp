@@ -121,7 +121,7 @@ void onReceive (const char * message, int len, Json_de jMsg)
     
     if (std::strcmp(jMsg[INTERMODULE_ROUTING_TYPE].get<std::string>().c_str(),CMD_TYPE_INTERMODULE)==0)
     {
-        const Json cmd = jMsg[ANDRUAV_PROTOCOL_MESSAGE_CMD];
+        const Json_de cmd = jMsg[ANDRUAV_PROTOCOL_MESSAGE_CMD];
         const int messageType = jMsg[ANDRUAV_PROTOCOL_MESSAGE_TYPE].get<int>();
     
         if (messageType== TYPE_AndruavModule_ID)

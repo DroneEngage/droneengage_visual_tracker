@@ -3,9 +3,9 @@
 
 
 
+using namespace de::tracker;
 
-
-void de::tracker::CTracker_Facade::sendTrackingTargetsLocation( const std::string& target_party_id, const Json_de targets_location) const
+void CTracker_Facade::sendTrackingTargetsLocation( const std::string& target_party_id, const Json_de targets_location) const
 {
     if (targets_location.empty())
     {
