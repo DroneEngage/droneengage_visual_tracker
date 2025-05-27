@@ -14,6 +14,27 @@
 
 using namespace de::tracker;
 
+
+/**
+ * @brief Wrapper for the ioctl system call that handles interrupted system calls.
+ *
+ * This function repeatedly calls ioctl until it either succeeds or fails for a reason
+ * other than being interrupted by a signal (EINTR). This is useful for ensuring that
+ * transient interruptions do not cause the operation to fail.
+ *
+ * @param fh      File handle on which to perform the ioctl operation.
+ * @param request Device-dependent request code.
+ * @param arg     Pointer to memory containing arguments for the ioctl request.
+ * @return        Result of the ioctl call. Returns -1 on error, otherwise returns the result of ioctl.
+ */
+int CVideo::xioctl(int fh, unsigned long request, void *arg) {
+    int r;
+    do {
+        r = ioctl(fh, request, arg);
+    } while (-1 == r && EINTR == errno);
+    return r;
+}
+
 /**
  * @brief Queries the current resolution of a V4L2 video device.
  *
@@ -46,7 +67,7 @@ bool CVideo::getVideoResolution (const std::string& video_device_path, unsigned 
     struct v4l2_format fmt = {0};
     fmt.type = V4L2_BUF_TYPE_VIDEO_CAPTURE; // We are querying a capture device
 
-    if (ioctl(fd, VIDIOC_G_FMT, &fmt) == 0) {
+    if (CVideo::xioctl(fd, VIDIOC_G_FMT, &fmt) == 0) {
         width = fmt.fmt.pix.width;
         height = fmt.fmt.pix.height;
         std::cout << _SUCCESS_CONSOLE_TEXT_ << "Queried V4L2 device " << _LOG_CONSOLE_BOLD_TEXT << video_device_path

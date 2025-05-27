@@ -61,7 +61,7 @@ bool CTracker::initTargetVirtualVideoDevice(const std::string &target_video_devi
     fmt.fmt.pix.bytesperline = m_image_width; // Stride of the Y plane
     fmt.fmt.pix.sizeimage = (m_image_width * m_image_height * 3) / 2;
 
-    if (ioctl(m_video_fd, VIDIOC_S_FMT, &fmt) < 0)
+    if (CVideo::xioctl(m_video_fd, VIDIOC_S_FMT, &fmt) < 0)
     {
         fprintf(stderr, "Failed to set video format on %s: %s\n", m_target_video_path.c_str(), strerror(errno));
         close(m_video_fd);
