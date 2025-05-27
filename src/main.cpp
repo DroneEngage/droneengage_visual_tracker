@@ -226,9 +226,9 @@ void initDEModule(int argc, char *argv[])
     }
 
     // UDP Server
-    cModule.init(jsonConfig["s2s_udp_target_ip"].get<std::string>().c_str(),
+    cModule.init(jsonConfig["s2s_udp_target_ip"].get<std::string>(),
             std::stoi(jsonConfig["s2s_udp_target_port"].get<std::string>().c_str()),
-            jsonConfig["s2s_udp_listening_ip"].get<std::string>().c_str() ,
+            jsonConfig["s2s_udp_listening_ip"].get<std::string>() ,
             std::stoi(jsonConfig["s2s_udp_listening_port"].get<std::string>().c_str()),
             udp_chunk_size);
 

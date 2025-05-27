@@ -96,7 +96,7 @@ file(GLOB folder_helpers "./src/helpers/*.cpp")
 set(files ${folder_src} ${folder_common} ${folder_tracker} ${folder_helpers})
 
 # Add the executable target and link its libraries
-add_executable(de_tracker ${files})
+add_executable(de_tracker.so ${files})
 target_link_libraries(de_tracker Threads::Threads ${OpenCV_LIBS})
 
 
