@@ -18,18 +18,18 @@ std::thread m_framesThread;
 
 
 
-bool CTracker::initTargetVirtualVideoDevice(const std::string &target_video_device)
+bool CTracker::initTargetVirtualVideoDevice(const std::string &output_video_device)
 {
     m_virtual_device_opened = false;
 
-    if (target_video_device != std::string(""))
+    if (output_video_device != std::string(""))
     {
-        m_target_video_path = target_video_device;
-        m_target_video_active = true;
+        m_output_video_path = output_video_device;
+        m_output_video_active = true;
     }
     else
     {
-        m_target_video_active = false;
+        m_output_video_active = false;
         // not an error
         return true;
     }
@@ -40,14 +40,14 @@ bool CTracker::initTargetVirtualVideoDevice(const std::string &target_video_devi
     cv::cvtColor(frame, yuv_frame, cv::COLOR_BGR2YUV_I420);
 
     // Open the virtual video device
-    m_video_fd = open(m_target_video_path.c_str(), O_WRONLY | O_NONBLOCK);
+    m_video_fd = open(m_output_video_path.c_str(), O_WRONLY | O_NONBLOCK);
     if (m_video_fd < 0)
     {
-        std::cout << "Error: Could not open virtual video device " << m_target_video_path << ": " << strerror(errno) << std::endl;
+        std::cout << "Error: Could not open virtual video device " << m_output_video_path << ": " << strerror(errno) << std::endl;
         return false;
     }
 
-    std::cout << "Successfully opened virtual video device: " << m_target_video_path << std::endl;
+    std::cout << "Successfully opened virtual video device: " << m_output_video_path << std::endl;
 
     struct v4l2_format fmt = {0};
     fmt.type = V4L2_BUF_TYPE_VIDEO_OUTPUT; // We are outputting frames to this device
@@ -63,13 +63,13 @@ bool CTracker::initTargetVirtualVideoDevice(const std::string &target_video_devi
 
     if (CVideo::xioctl(m_video_fd, VIDIOC_S_FMT, &fmt) < 0)
     {
-        fprintf(stderr, "Failed to set video format on %s: %s\n", m_target_video_path.c_str(), strerror(errno));
+        fprintf(stderr, "Failed to set video format on %s: %s\n", m_output_video_path.c_str(), strerror(errno));
         close(m_video_fd);
         video_capture_cap.release(); // Release the input video capture
         return 1;
     }
     fprintf(stderr, "Successfully set format for %s: %dx%d, pixformat YUV420\n",
-            m_target_video_path.c_str(), fmt.fmt.pix.width, fmt.fmt.pix.height);
+            m_output_video_path.c_str(), fmt.fmt.pix.width, fmt.fmt.pix.height);
     // Store the calculated frame size for later writing
 
     // Set the YUV frame size based on the expected resolution
@@ -79,7 +79,7 @@ bool CTracker::initTargetVirtualVideoDevice(const std::string &target_video_devi
     return true;
 };
 
-bool CTracker::init(const enum ENUM_TRACKER_TYPE tracker_type, const std::string &video_path, const std::string &target_video_device)
+bool CTracker::init(const enum ENUM_TRACKER_TYPE tracker_type, const std::string &video_path, const std::string &output_video_device)
 {
 
     m_process = false;
@@ -168,7 +168,7 @@ bool CTracker::init(const enum ENUM_TRACKER_TYPE tracker_type, const std::string
         m_image_fps);
 
     // --- V4L2 Output Device Initialization ---
-    if (!initTargetVirtualVideoDevice(target_video_device))
+    if (!initTargetVirtualVideoDevice(output_video_device))
     {
         video_capture_cap.release();
         return false;
@@ -318,7 +318,7 @@ void CTracker::track2(const float x, const float y, const float radius, const bo
                 if (m_callback_tracker != nullptr)
                     m_callback_tracker->onTrack(revScaleX(bbox_2d.x), revScaleY(bbox_2d.y), revScaleX(bbox_2d.width), revScaleY(bbox_2d.height));
 
-                if (display || m_target_video_active)
+                if (display || m_output_video_active)
                     cv::rectangle(frame, bbox_2d, cv::Scalar(0, 255, 255), 2, 1);
 #ifdef DDEBUG
                 std::cout << "Tracking at " << bbox_2d << std::endl;
@@ -333,7 +333,7 @@ void CTracker::track2(const float x, const float y, const float radius, const bo
                 std::cout << "Tracking at " << std::to_string(bbox.x) << "  --    " << std::to_string(bbox.y) << " xxx "
                           << std::to_string(bbox.width) << "  --    " << std::to_string(bbox.height) << std::endl;
 #endif
-                if (display || m_target_video_active)
+                if (display || m_output_video_active)
                     cv::rectangle(frame, bbox, cv::Scalar(0, 255, 255), 2, 1);
             }
         }
@@ -343,7 +343,7 @@ void CTracker::track2(const float x, const float y, const float radius, const bo
                 m_callback_tracker->onTrackStatusChanged(false);
 
             // Tracking failure detected.
-            if (display || m_target_video_active)
+            if (display || m_output_video_active)
             {
                 cv::putText(frame, "Tracking failure detected", cv::Point(100, 80), cv::FONT_HERSHEY_SIMPLEX, 0.75, cv::Scalar(0, 0, 255), 2);
             }
@@ -368,11 +368,11 @@ void CTracker::track2(const float x, const float y, const float radius, const bo
                 ssize_t bytes_written = write(m_video_fd, yuv_frame.data, m_yuv_frame_size);
                 if (bytes_written < 0)
                 {
-                    std::cout << "Error: Failed to write frame to " << m_target_video_path << ": " << strerror(errno) << std::endl;
+                    std::cout << "Error: Failed to write frame to " << m_output_video_path << ": " << strerror(errno) << std::endl;
                     // EAGAIN or EWOULDBLOCK might occur if O_NONBLOCK is used and buffer is full.
                     if (errno == EAGAIN || errno == EWOULDBLOCK)
                     {
-                        std::cout << "Warning: Virtual device " << m_target_video_path << " buffer full? Try reading from it." << std::endl;
+                        std::cout << "Warning: Virtual device " << m_output_video_path << " buffer full? Try reading from it." << std::endl;
                         // continue; // Optionally, skip frame and try next, or implement a delay
                     }
                     // For other errors, it's likely more serious, consider breaking the loop or attempting recovery.
@@ -380,7 +380,7 @@ void CTracker::track2(const float x, const float y, const float radius, const bo
                 }
                 else if (static_cast<size_t>(bytes_written) != m_yuv_frame_size)
                 {
-                    std::cout << "Warning: Incomplete frame write to " << m_target_video_path << " (wrote " << bytes_written << " of " << m_yuv_frame_size << " bytes)" << std::endl;
+                    std::cout << "Warning: Incomplete frame write to " << m_output_video_path << " (wrote " << bytes_written << " of " << m_yuv_frame_size << " bytes)" << std::endl;
                 }
             }
             else

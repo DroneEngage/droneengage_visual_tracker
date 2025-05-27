@@ -51,7 +51,7 @@ namespace tracker
 
         public:
 
-            CTracker(CCallBack_Tracker *callback_tracker):m_valid_track(false),m_callback_tracker(callback_tracker), m_target_video_path(""), m_target_video_active(false){
+            CTracker(CCallBack_Tracker *callback_tracker):m_valid_track(false),m_callback_tracker(callback_tracker), m_output_video_path(""), m_output_video_active(false){
                 
             };
 
@@ -64,7 +64,7 @@ namespace tracker
             
 
         public:
-            bool init (const enum ENUM_TRACKER_TYPE tracker_type, const std::string& video_path, const std::string& target_video_device);
+            bool init (const enum ENUM_TRACKER_TYPE tracker_type, const std::string& video_path, const std::string& output_video_device);
             bool uninit();
             void track(const float x, const float y, const float radius, const bool display);
             void track2(const float x, const float y, const float radius, const bool display);
@@ -82,7 +82,7 @@ namespace tracker
 
         protected:
             bool getVideoResolution(const std::string& video_device_path, unsigned int& width, unsigned int& height);
-            bool initTargetVirtualVideoDevice(const std::string& target_video_device);
+            bool initTargetVirtualVideoDevice(const std::string& output_video_device);
 
         protected:
             
@@ -116,9 +116,9 @@ namespace tracker
             cv::VideoCapture video_capture_cap;
             CCallBack_Tracker * m_callback_tracker;
             
-            std::string m_target_video_path;
+            std::string m_output_video_path;
             
-            bool m_target_video_active = false;
+            bool m_output_video_active = false;
             int m_video_fd = -1;
             int m_yuv_frame_size = 0;
 

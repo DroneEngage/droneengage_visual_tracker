@@ -33,13 +33,13 @@ bool CTrackerMain::init()
     }
 
     m_tracker = std::make_unique<CTracker>(CTracker(this));
-    std::string target_video_device = "";
-    if (m_jsonConfig.contains("target_video_device"))
+    std::string output_video_device = "";
+    if (m_jsonConfig.contains("output_video_device"))
     {
-        target_video_device = m_jsonConfig["target_video_device"];
+        output_video_device = m_jsonConfig["output_video_device"];
     }
     
-    bool res = m_tracker.get()->init(m_jsonConfig["tracker_algorithm_index"], m_jsonConfig["video_device"], target_video_device);
+    bool res = m_tracker.get()->init(m_jsonConfig["tracker_algorithm_index"], m_jsonConfig["video_device"], output_video_device);
     if (res == false)
     {
         std::cout << _ERROR_CONSOLE_BOLD_TEXT_ << "FATAL ERROR:" << _INFO_CONSOLE_TEXT << " Failed to initialize tracker. " <<  _NORMAL_CONSOLE_TEXT_ << std::endl;
@@ -47,7 +47,7 @@ bool CTrackerMain::init()
 	}
 
 
-    if (target_video_device!="")
+    if (output_video_device!="")
     {
         // if Target video virtual device is specified then stream
         // to a virtual video driver even without tracking
