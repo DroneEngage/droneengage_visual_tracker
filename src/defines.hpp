@@ -5,7 +5,6 @@
 #include <string>
 #include <stdint.h>
 
-#define DDEBUG  1
 
 /**
  * @brief configuration file path & name

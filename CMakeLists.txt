@@ -47,6 +47,9 @@ find_package(OpenCV 4.5 REQUIRED )
 message(STATUS "OpenCV_INCLUDE_DIRS found: ${OpenCV_INCLUDE_DIRS}")
 
 
+# Define an option for user control over DETAILED_DEBUG
+option(DDEBUG "Detailed Debug" OFF) # Default is OFF
+
 
 include_directories( ${OpenCV_INCLUDE_DIRS} )
 
@@ -99,6 +102,10 @@ set(files ${folder_src} ${folder_common} ${folder_tracker} ${folder_helpers})
 add_executable(de_tracker ${files})
 target_link_libraries(de_tracker Threads::Threads ${OpenCV_LIBS})
 
+# Conditionally define DDEBUG based on the DDEBUG option
+target_compile_definitions(de_tracker PRIVATE
+    $<$<BOOL:${DDEBUG}>:DDEBUG>
+)
 
 set(OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/bin)
 file(MAKE_DIRECTORY ${OUTPUT_DIRECTORY})
@@ -107,5 +114,9 @@ SET(EXECUTABLE_OUTPUT_PATH ${OUTPUT_DIRECTORY})
 
 configure_file(de_tracker.config.module.json ${OUTPUT_DIRECTORY}/de_tracker.config.module.json COPYONLY)
 
+# Highlight if DDEBUG or TEST_MODE_NO_HAILO_LINK are enabled
+if (DDEBUG)
+    message(STATUS "${Red}Option DDEBUG is ENABLED.${ColourReset}")
+endif()
 
 message ("${Yellow}=========================================================================${ColourReset}")
