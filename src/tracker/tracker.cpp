@@ -53,12 +53,9 @@ bool CTracker::initTargetVirtualVideoDevice(const std::string &output_video_devi
     fmt.type = V4L2_BUF_TYPE_VIDEO_OUTPUT; // We are outputting frames to this device
     fmt.fmt.pix.width = m_image_width;
     fmt.fmt.pix.height = m_image_height;
-    fmt.fmt.pix.pixelformat = V4L2_PIX_FMT_YUV420; // YUV420 planar (I420)
-    fmt.fmt.pix.field = V4L2_FIELD_NONE;           // Progressive scan
-    // For YUV420, sizeimage = width * height * 3 / 2
-    // bytesperline for Y plane is width. For U and V planes, it's width / 2.
-    // Some drivers might calculate this automatically if set to 0, or expect it.
-    fmt.fmt.pix.bytesperline = m_image_width; // Stride of the Y plane
+    fmt.fmt.pix.pixelformat = V4L2_PIX_FMT_YUV420;  // YUV420 planar (I420)
+    fmt.fmt.pix.field = V4L2_FIELD_NONE;            // Progressive scan
+    fmt.fmt.pix.bytesperline = m_image_width;       // Stride of the Y plane
     fmt.fmt.pix.sizeimage = (m_image_width * m_image_height * 3) / 2;
 
     if (CVideo::xioctl(m_video_fd, VIDIOC_S_FMT, &fmt) < 0)
@@ -131,12 +128,16 @@ bool CTracker::init(const enum ENUM_TRACKER_TYPE tracker_type, const std::string
     unsigned int detected_width = 0;
     unsigned int detected_height = 0;
 
-    if (CVideo::getVideoResolution(m_video_path, detected_width, detected_height))
+    if (!CVideo::getVideoResolution(m_video_path, detected_width, detected_height))
     {
-        m_image_width = detected_width;
-        m_image_height = detected_height;
-    }
+        std::cout << _ERROR_CONSOLE_BOLD_TEXT_ << "FATAL ERROR:" << _BK_RED_WHITE_TEXT_ << " could not access camera at " << _ERROR_CONSOLE_TEXT_ << video_path << _NORMAL_CONSOLE_TEXT_ << std::endl;
 
+        return false;
+    }
+    
+    m_image_width = detected_width;
+    m_image_height = detected_height;
+    
     video_capture.open(video_path);
     if (!video_capture.isOpened())
     {
@@ -245,7 +246,7 @@ void CTracker::track2(const float x, const float y, const float radius, const bo
     float scaled_x = x * m_image_width;
     float scaled_y = y * m_image_height;
     bool is_tracking_active = (x > 0);
-    std::cout << "1" << std::endl;
+    
     if (scaled_x < 0)
     {
         scaled_x = 0;
@@ -263,14 +264,13 @@ void CTracker::track2(const float x, const float y, const float radius, const bo
     {
         scaled_y = m_image_height - radius;
     }
-    std::cout << "2" << std::endl;
+
 #ifdef DDEBUG
     std::cout << "scaled_x,scaled_y:" << std::to_string(scaled_x) << ":" << std::to_string(scaled_y) << std::endl;
 #endif
 
     bbox_2d = cv::Rect2d (scaled_x, scaled_y, radius, radius);
     bbox = cv::Rect (scaled_x, scaled_y, radius, radius);
-    std::cout << "3" << std::endl;
 
     if (is_tracking_active)
     {
@@ -376,7 +376,7 @@ void CTracker::track2(const float x, const float y, const float radius, const bo
                     if (errno == EAGAIN || errno == EWOULDBLOCK)
                     {
                         std::cout << "Warning: Virtual device " << m_output_video_path << " buffer full? Try reading from it." << std::endl;
-                        // continue; // Optionally, skip frame and try next, or implement a delay
+                        continue; // Optionally, skip frame and try next, or implement a delay
                     }
                     // For other errors, it's likely more serious, consider breaking the loop or attempting recovery.
                     // break; // Uncomment to stop on write error

@@ -30,8 +30,8 @@
     "tracker_algorithm_index"     : 7,
 
     // Specific Module Parameters
-    "source_video_device"                : "/dev/video0",
-    "output_video_device"         : "/dev/video2",
+    "source_video_device"               : "/dev/video0",
+    "output_video_device"               : "/dev/video2",
 
     // Debugging
     "display_video"              : false
