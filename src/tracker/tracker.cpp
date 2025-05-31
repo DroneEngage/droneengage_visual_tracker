@@ -266,7 +266,7 @@ void CTracker::track2(const float x, const float y, const float radius, const bo
     }
 
 #ifdef DDEBUG
-    std::cout << "scaled_x,scaled_y:" << std::to_string(scaled_x) << ":" << std::to_string(scaled_y) << std::endl;
+    std::cout << "scaled_x,scaled_y:" << std::to_string(scaled_x) << ":" << std::to_string(scaled_y) << _NORMAL_CONSOLE_TEXT_ << std::endl;
 #endif
 
     bbox_2d = cv::Rect2d (scaled_x, scaled_y, radius, radius);
@@ -293,25 +293,39 @@ void CTracker::track2(const float x, const float y, const float radius, const bo
         {
             continue;
         }
-            if (is_tracking_active)
+        if (is_tracking_active)
+        {
+            if (m_islegacy)
             {
-                if (m_islegacy)
-                {
-                    valid_track = m_legacy_tracker->update(frame, bbox_2d);
-                }
-                else
-                {
-                    valid_track = m_tracker->update(frame, bbox);
-                }
-
-                if (valid_track != m_valid_track)
-                {
-                    m_valid_track = valid_track;
-                    if (m_callback_tracker != nullptr)
-                        m_callback_tracker->onTrackStatusChanged(m_valid_track);
-                }
+                valid_track = m_legacy_tracker->update(frame, bbox_2d);
             }
-        
+            else
+            {
+                valid_track = m_tracker->update(frame, bbox);
+            }
+
+            if (valid_track != m_valid_track)
+            {
+                m_valid_track = valid_track;
+                if (m_callback_tracker != nullptr)
+                    m_callback_tracker->onTrackStatusChanged(m_valid_track);
+            }
+        }
+        else
+        {
+            if (valid_track != m_valid_track)
+            {
+                m_valid_track = valid_track;
+                if (m_callback_tracker != nullptr)
+                    m_callback_tracker->onTrackStatusChanged(false);
+            }
+
+            // Tracking failure detected.
+            if (display || m_output_video_active)
+            {
+                cv::putText(frame, "Tracking failure detected", cv::Point(100, 80), cv::FONT_HERSHEY_SIMPLEX, 0.75, cv::Scalar(0, 0, 255), 2);
+            }
+        }
 
         if (m_valid_track)
         {
@@ -340,17 +354,7 @@ void CTracker::track2(const float x, const float y, const float radius, const bo
                     cv::rectangle(frame, bbox, cv::Scalar(0, 255, 255), 2, 1);
             }
         }
-        else
-        {
-            if (m_callback_tracker != nullptr)
-                m_callback_tracker->onTrackStatusChanged(false);
-
-            // Tracking failure detected.
-            if (display || m_output_video_active)
-            {
-                cv::putText(frame, "Tracking failure detected", cv::Point(100, 80), cv::FONT_HERSHEY_SIMPLEX, 0.75, cv::Scalar(0, 0, 255), 2);
-            }
-        }
+        
 
         // --- Start of new code for streaming to virtual video device ---
         if (m_video_fd != -1)

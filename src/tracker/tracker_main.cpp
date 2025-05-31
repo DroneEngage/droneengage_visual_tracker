@@ -92,9 +92,23 @@ void CTrackerMain::stopTracking()
     m_tracker.get()->stop();
 }
 
-
+/**
+ * Called when there is a a tracked object.
+ * output from 0 to 1.0
+ * (0,0) top left
+ * center = [(x + w )/2 , (y + h)/2]
+ */
 void CTrackerMain::onTrack (const float& x, const float& y, const float& width, const float& height) 
 {
+
+    #ifdef DEBUG
+        std::cout << _INFO_CONSOLE_BOLD_TEXT << "onTrack >> " 
+        << _LOG_CONSOLE_BOLD_TEXT << " x:" << _INFO_CONSOLE_BOLD_TEXT << x
+        << _LOG_CONSOLE_BOLD_TEXT << "  y:" << _INFO_CONSOLE_BOLD_TEXT << y
+        << _LOG_CONSOLE_BOLD_TEXT << "  w:" << _INFO_CONSOLE_BOLD_TEXT << width
+        << _LOG_CONSOLE_BOLD_TEXT << "  h:" << _INFO_CONSOLE_BOLD_TEXT << height
+        << _NORMAL_CONSOLE_TEXT_ << std::endl;
+    #endif
    static int counter=0;
     Json_de targets = Json_de::array();
     targets.push_back({
@@ -111,8 +125,10 @@ void CTrackerMain::onTrack (const float& x, const float& y, const float& width, 
     );
 }
 
-
+/**
+ * Called once trackig status changed.
+ */
 void CTrackerMain::onTrackStatusChanged (const bool& track)  
 {
-
+    std::cout << _INFO_CONSOLE_BOLD_TEXT << "onTrackStatusChanged:" << _LOG_CONSOLE_BOLD_TEXT << std::to_string(track) << _NORMAL_CONSOLE_TEXT_ << std::endl;
 }

@@ -86,6 +86,10 @@ namespace tracker
 
         protected:
             
+            /**
+             * output from 0 to 1.0
+             * (0,0) top left
+             */
             float revScaleX(const float& x) const
             {
                 return (x / m_image_width);
