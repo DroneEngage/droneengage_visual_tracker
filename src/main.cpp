@@ -203,7 +203,7 @@ void initDEModule(int argc, char *argv[])
     de::CLocalConfigFile& cLocalConfigFile = de::CLocalConfigFile::getInstance();
         
     cModule.defineModule(
-        MODULE_CLASS_GPIO,
+        MODULE_CLASS_TRACKING,
         jsonConfig["module_id"],
         cLocalConfigFile.getStringField("module_key"),
         version_string,
