@@ -76,9 +76,12 @@ bool CTracker::initTargetVirtualVideoDevice(const std::string &output_video_devi
     return true;
 };
 
-bool CTracker::init(const enum ENUM_TRACKER_TYPE tracker_type, const std::string &video_path, const std::string &output_video_device)
+bool CTracker::init(const enum ENUM_TRACKER_TYPE tracker_type, const std::string& video_path, const uint16_t camera_orientation, const bool camera_forward, const std::string& output_video_device)
 {
 
+    m_camera_forward = camera_forward;
+    m_camera_orientation = camera_orientation;
+    
     m_process = false;
     m_active_tracker = tracker_type;
     switch (m_active_tracker)
@@ -333,7 +336,7 @@ void CTracker::track2(const float x, const float y, const float radius, const bo
             if (m_islegacy)
             {
                 if (m_callback_tracker != nullptr)
-                    m_callback_tracker->onTrack(revScaleX(bbox_2d.x), revScaleY(bbox_2d.y), revScaleX(bbox_2d.width), revScaleY(bbox_2d.height));
+                    m_callback_tracker->onTrack(revScaleX(bbox_2d.x), revScaleY(bbox_2d.y), revScaleX(bbox_2d.width), revScaleY(bbox_2d.height), m_camera_orientation, m_camera_forward);
 
                 if (display || m_output_video_active)
                     cv::rectangle(frame, bbox_2d, cv::Scalar(0, 255, 255), 2, 1);
@@ -344,7 +347,7 @@ void CTracker::track2(const float x, const float y, const float radius, const bo
             else
             {
                 if (m_callback_tracker != nullptr)
-                    m_callback_tracker->onTrack(revScaleX(bbox.x), revScaleY(bbox.y), revScaleX(bbox.width), revScaleY(bbox.height));
+                    m_callback_tracker->onTrack(revScaleX(bbox.x), revScaleY(bbox.y), revScaleX(bbox.width), revScaleY(bbox.height), m_camera_orientation, m_camera_forward);
 
 #ifdef DDEBUG
                 std::cout << "Tracking at " << std::to_string(bbox.x) << "  --    " << std::to_string(bbox.y) << " xxx "

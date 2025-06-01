@@ -71,8 +71,8 @@ namespace tracker
             void OnConnectionStatusChangedWithAndruavServer (const int status) {};
         
         public:
-            //CCacdllBack_Tracker
-            void onTrack (const float& x, const float& y, const float& width, const float& height) override ;
+            //CCallBack_Tracker
+            void onTrack (const float& x, const float& y, const float& width, const float& height, const uint16_t camera_orientation, const bool camera_forward) override ;
             void onTrackStatusChanged (const bool& track) override ;
 
         private:

@@ -21,6 +21,12 @@
 #include <opencv2/core/ocl.hpp>
 
 
+#define DEF_TRACK_ORIENTATION_DEG_0     0
+#define DEF_TRACK_ORIENTATION_DEG_90    1
+#define DEF_TRACK_ORIENTATION_DEG_180   2
+#define DEF_TRACK_ORIENTATION_DEG_270   3
+
+
 namespace de
 {
 namespace tracker
@@ -42,7 +48,7 @@ namespace tracker
     class CCallBack_Tracker
     {
         public:
-            virtual void onTrack (const float& x, const float& y, const float& width, const float& height) = 0;
+            virtual void onTrack (const float& x, const float& y, const float& width, const float& height, const uint16_t camera_orientation, const bool camera_forward) = 0;
             virtual void onTrackStatusChanged (const bool& track) = 0;
     };
 
@@ -64,7 +70,7 @@ namespace tracker
             
 
         public:
-            bool init (const enum ENUM_TRACKER_TYPE tracker_type, const std::string& video_path, const std::string& output_video_device);
+            bool init (const enum ENUM_TRACKER_TYPE tracker_type, const std::string& video_path, const uint16_t camera_orientation , const bool camera_forward, const std::string& output_video_device);
             bool uninit();
             void track(const float x, const float y, const float radius, const bool display);
             void track2(const float x, const float y, const float radius, const bool display);
@@ -79,6 +85,18 @@ namespace tracker
                 return m_valid_track;
             };
 
+
+        public:
+
+            inline const uint16_t isCameraForward()
+            {
+                return m_camera_forward;
+            }
+
+            inline const bool getCameraOrientation()
+            {
+                return m_camera_orientation;
+            }
 
         protected:
             bool getVideoResolution(const std::string& video_device_path, unsigned int& width, unsigned int& height);
@@ -127,6 +145,9 @@ namespace tracker
             int m_yuv_frame_size = 0;
 
             bool m_virtual_device_opened = false;
+
+            bool m_camera_forward    = false;
+            uint16_t m_camera_orientation   = DEF_TRACK_ORIENTATION_DEG_0;
     };
 
 }
