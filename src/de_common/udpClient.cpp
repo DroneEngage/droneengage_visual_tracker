@@ -334,7 +334,7 @@ void de::comm::CUDPClient::sendMSG (const char * msg, const int length)
                 chunkMsg[1] = static_cast<uint8_t>((chunk_number >> 8) & 0xFF);
             }
             
-            #ifdef DDEBUG
+            #ifdef NETDEBUG
 	        std::cout << "chunkNumber:" << chunk_number << " :chunkLength :" << chunkLength << ":m_chunkSize" << m_chunkSize << std::endl;
             #endif
             
