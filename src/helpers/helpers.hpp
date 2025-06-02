@@ -47,4 +47,6 @@ int signum(T x) {
 }
 
 
+double roundToPrecision(double value, int decimalPlaces);
+
 #endif
