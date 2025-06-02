@@ -1,3 +1,6 @@
+#include <chrono> // For high-resolution timing
+#include <thread> // For std::this_thread::sleep_for
+
 #include <opencv2/opencv.hpp>
 #include <opencv2/tracking.hpp>
 #include <opencv2/core/ocl.hpp>
@@ -236,6 +239,11 @@ void CTracker::track2(const float x, const float y, const float radius)
     cv::Rect2d bbox_2d;
     cv::Rect bbox;
 
+
+    // --- Frame Rate Control Variables ---
+    const std::chrono::milliseconds target_frame_time_ms(1000 / m_target_fps); 
+    
+
     // --- Initial Setup and Validation ---
     if (!video_capture.isOpened())
     {
@@ -306,6 +314,9 @@ void CTracker::track2(const float x, const float y, const float radius)
     // --- Main Tracking and Streaming Loop ---
     while (m_process)
     {
+        // Start measuring time for the current frame
+        auto start_time = std::chrono::high_resolution_clock::now();
+
         // Capture a new frame
         video_capture >> frame;
         if (frame.empty())
@@ -425,7 +436,28 @@ void CTracker::track2(const float x, const float y, const float radius)
                 // m_process = false;
             }
         }
-    } // End of while (m_process) loop
+
+        // --- Frame Rate Control Implementation ---
+        auto end_time = std::chrono::high_resolution_clock::now();
+        auto elapsed_time = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time);
+
+        if (elapsed_time < target_frame_time_ms)
+        {
+            auto time_to_sleep = target_frame_time_ms - elapsed_time;
+            #ifdef DDEBUG
+                        std::cout << "Elapsed: " << elapsed_time.count() << "ms, Sleeping for: " << time_to_sleep.count() << "ms" << std::endl;
+            #endif
+                        std::this_thread::sleep_for(time_to_sleep);
+                    }
+            #ifdef DDEBUG
+                    else
+                    {
+                        std::cout << "Warning: Frame processing took " << elapsed_time.count() << "ms, exceeding target "
+                                << target_frame_time_ms.count() << "ms. Cannot maintain 30 FPS." << std::endl;
+                    }
+            #endif
+
+        } // End of while (m_process) loop
 
     std::cout << _LOG_CONSOLE_BOLD_TEXT << "tracking off" << _NORMAL_CONSOLE_TEXT_ << std::endl;
     // Any necessary cleanup after the loop

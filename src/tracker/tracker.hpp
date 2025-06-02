@@ -148,6 +148,9 @@ namespace tracker
 
             bool m_camera_forward    = false;
             uint16_t m_camera_orientation   = DEF_TRACK_ORIENTATION_DEG_0;
+
+            uint32_t m_target_fps = 30; 
+
     };
 
 }
