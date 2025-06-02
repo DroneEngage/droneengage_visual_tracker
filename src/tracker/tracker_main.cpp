@@ -2,6 +2,7 @@
 #include <iostream>
 
 #include "../helpers/colors.hpp"
+#include "../helpers/helpers.hpp"
 #include "../de_common/configFile.hpp"
 #include "../de_common/messages.hpp"
 #include "tracker.hpp"
@@ -104,8 +105,8 @@ void CTrackerMain::stopTracking()
 void CTrackerMain::onTrack (const float& x, const float& y, const float& width, const float& height, const uint16_t camera_orientation, const bool camera_forward) 
 {
 
-   const double center_x = x + width /2.0f; 
-   const double center_y = y + height /2.0f; 
+   const double center_x = 0.5 -  x + width /2.0f; 
+   const double center_y = 0.5 - y + height /2.0f; 
       
    double delta_x,delta_y,delta_z;
 
@@ -133,6 +134,11 @@ void CTrackerMain::onTrack (const float& x, const float& y, const float& width, 
     default:
         break;
     }
+
+
+    // Apply precision limiting
+    delta_x = roundToPrecision(delta_x, 6);
+    delta_y = roundToPrecision(delta_y, 6);
 
 
     Json_de targets = Json_de::array();
@@ -167,7 +173,7 @@ void CTrackerMain::onTrack (const float& x, const float& y, const float& width, 
     #endif
 
     
-    m_trackerFacade.sendTrackingTargetsLocation(
+    m_trackerFacade.sendTrackingTargetsLocation (
         std::string(""),
         targets
     );
@@ -178,5 +184,10 @@ void CTrackerMain::onTrack (const float& x, const float& y, const float& width, 
  */
 void CTrackerMain::onTrackStatusChanged (const bool& track)  
 {
+    m_trackerFacade.sendTrackingTargetStatus (
+        std::string(""),
+        track
+    );
+    
     std::cout << _INFO_CONSOLE_BOLD_TEXT << "onTrackStatusChanged:" << _LOG_CONSOLE_BOLD_TEXT << std::to_string(track) << _NORMAL_CONSOLE_TEXT_ << std::endl;
 }

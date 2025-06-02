@@ -53,8 +53,8 @@ namespace tracker
 
         public:
            
-            void sendTrackingTargetsLocation( const std::string& target_party_id, const Json_de targets_location) const;
-            
+            void sendTrackingTargetsLocation(const std::string& target_party_id, const Json_de targets_location) const;
+            void sendTrackingTargetStatus(const std::string& target_party_id, const bool enabled) const;
         protected:
 
             

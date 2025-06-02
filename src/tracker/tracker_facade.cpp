@@ -18,5 +18,21 @@ void CTracker_Facade::sendTrackingTargetsLocation( const std::string& target_par
     };
 
 
-    m_module.sendJMSG(target_party_id, target_party_id, TYPE_AndruavMessage_TrackingTargetLocation, true);
+    m_module.sendJMSG(target_party_id, message, TYPE_AndruavMessage_TrackingTargetLocation, true);
+}
+
+
+void CTracker_Facade::sendTrackingTargetStatus(const std::string& target_party_id, const bool enabled) const
+{
+    int status = TrackingTarget_STATUS_TRACKING_LOST;
+    if (enabled)
+    {
+        status  = TrackingTarget_STATUS_TRACKING_DETECTED;
+    }
+    Json_de message =
+    {
+        {"a", status}
+    };
+
+    m_module.sendJMSG(target_party_id, message, TYPE_AndruavMessage_TargetTracking_STATUS, true);
 }

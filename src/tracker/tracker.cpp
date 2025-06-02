@@ -194,6 +194,7 @@ bool CTracker::uninit()
 
 void CTracker::stop()
 {
+    if (!m_process) return ; 
     m_process = false;
     m_valid_track = false;
     if (m_callback_tracker != nullptr)

@@ -23,30 +23,40 @@ void CTrackerAndruavMessageParser::parseMessage (Json_de &andruav_message, const
 
     else
     {
-        Json_de message = andruav_message[ANDRUAV_PROTOCOL_MESSAGE_CMD];
+        Json_de cmd = andruav_message[ANDRUAV_PROTOCOL_MESSAGE_CMD];
         
         switch (messageType)
         {
 
-            case TYPE_AndruavMessage_TrackingTarget:
+            case TYPE_AndruavMessage_TrackingTarget_ACTION:
             {
                 // a: center X
                 // b: center Y
                 // r: radius
 
-                if ((message.contains("s")) && (message["s"].get<bool>() == true))
+                if (!cmd.contains("a") || !cmd["a"].is_number_integer()) return ;
+
+                switch (cmd["a"].get<int>())
                 {
-                    // stop tracking
-                    m_trackerMain.stopTracking();
-                    return ;
+
+                    case TrackingTarget_ACTION_TRACKING_POINT:
+                    
+                        if (!validateField(cmd, "b", Json_de::value_t::number_float)) return ;
+                        if (!validateField(cmd, "c", Json_de::value_t::number_float)) return ;
+                        if (!validateField(cmd, "r", Json_de::value_t::number_unsigned)) return ;
+                        
+                        m_trackerMain.startTracking(cmd["b"].get<float>(),
+                                                    cmd["c"].get<float>(), 
+                                                    cmd["r"].get<float>());
+                    break;
+
+                    case TrackingTarget_ACTION_TRACKING_REGION:
+                    break;
+                    
+                    case TrackingTarget_ACTION_TRACKING_STOP:
+                        m_trackerMain.stopTracking();
+                    break;
                 }
-                if (!validateField(message, "a", Json_de::value_t::number_float)) return ;
-                if (!validateField(message, "b", Json_de::value_t::number_float)) return ;
-                if (!validateField(message, "r", Json_de::value_t::number_unsigned)) return ;
-                
-                m_trackerMain.startTracking(message["a"].get<float>(),
-                                            message["b"].get<float>(), 
-                                            message["r"].get<float>());
             }
             break;
 
@@ -69,9 +79,6 @@ void CTrackerAndruavMessageParser::parseRemoteExecute (Json_de &andruav_message)
                 
     const int remoteCommand = cmd["C"].get<int>();
     std::cout << "cmd: " << remoteCommand << std::endl;
-    switch (remoteCommand)
-    {
-
-    }
+    
 }
 
