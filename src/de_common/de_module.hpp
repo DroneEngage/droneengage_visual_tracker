@@ -98,6 +98,7 @@ namespace comm
         
             void sendMSG (const char * msg, const int length)
                 {
+                    if (!cUDPClient.isStarted()) return ;
                     cUDPClient.sendMSG (msg, length);
                 }
 

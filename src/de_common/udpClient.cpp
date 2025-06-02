@@ -303,7 +303,8 @@ void de::comm::CUDPClient::InternelSenderIDEntry()
  **/
 void de::comm::CUDPClient::sendMSG (const char * msg, const int length)
 {
-    
+    assert(m_chunkSize > 0 && "m_chunkSize must be positive!");
+
     std::lock_guard<std::mutex> lock(m_lock);
 
     try
@@ -334,7 +335,7 @@ void de::comm::CUDPClient::sendMSG (const char * msg, const int length)
             }
             
             #ifdef DDEBUG
-	        std::cout << "chunkNumber:" << chunk_number << " :chunkLength :" << chunkLength << std::endl;
+	        std::cout << "chunkNumber:" << chunk_number << " :chunkLength :" << chunkLength << ":m_chunkSize" << m_chunkSize << std::endl;
             #endif
             
             // Copy the chunk data into the message
