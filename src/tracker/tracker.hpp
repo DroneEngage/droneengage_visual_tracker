@@ -72,8 +72,8 @@ namespace tracker
         public:
             bool init (const enum ENUM_TRACKER_TYPE tracker_type, const std::string& video_path, const uint16_t camera_orientation , const bool camera_forward, const std::string& output_video_device);
             bool uninit();
-            void track(const float x, const float y, const float radius, const bool display);
-            void track2(const float x, const float y, const float radius, const bool display);
+            void track(const float x, const float y, const float radius);
+            void track2(const float x, const float y, const float radius);
             void stop();
             const std::string getActiveTracker() 
             {

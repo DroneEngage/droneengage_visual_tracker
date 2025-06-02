@@ -51,19 +51,14 @@ bool CTrackerMain::init()
 	}
 
 
-    if (output_video_device!="")
+    if (output_video_device=="")
     {
-        // if Target video virtual device is specified then stream
-        // to a virtual video driver even without tracking
-        bool display_video = false;
-        const Json_de& jsonConfig = de::CConfigFile::getInstance().GetConfigJSON();
-        if (jsonConfig.contains("display_video"))
-        {
-            display_video = jsonConfig["display_video"].get<bool>();
-        }
-        // x = -1 start streaming with no tracking
-        m_tracker.get()->track(-1,0, 0, display_video);
+        std::cout << _ERROR_CONSOLE_BOLD_TEXT_ << "FATAL ERROR:" << _INFO_CONSOLE_TEXT << " No output_video_device specified in config.json" <<  _NORMAL_CONSOLE_TEXT_ << std::endl;
+        exit(1);
     }
+    
+    m_tracker.get()->track(-1,0, 0);
+    
     return true;
 }
 
@@ -81,14 +76,7 @@ void CTrackerMain::startTracking(const float x, const float y, const float radiu
 {
     m_tracker.get()->stop();
 
-    bool display_video = false;
-    const Json_de& jsonConfig = de::CConfigFile::getInstance().GetConfigJSON();
-    if (jsonConfig.contains("display_video"))
-    {
-        display_video = jsonConfig["display_video"].get<bool>();
-    }
-
-    m_tracker.get()->track(x,y,radius, display_video);
+    m_tracker.get()->track(x,y,radius);
 }
 
 void CTrackerMain::stopTracking()

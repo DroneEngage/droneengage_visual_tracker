@@ -206,7 +206,7 @@ void CTracker::stop()
         m_framesThread.join();
 }
 
-void CTracker::track(const float x, const float y, const float radius, const bool display)
+void CTracker::track(const float x, const float y, const float radius)
 {
     m_valid_track = false;
 
@@ -218,11 +218,11 @@ void CTracker::track(const float x, const float y, const float radius, const boo
         return;
     }
 
-    m_framesThread = std::thread([x, y, radius, display, this]()
-                                 { this->track2(x, y, radius, display); });
+    m_framesThread = std::thread([x, y, radius, this]()
+                                 { this->track2(x, y, radius); });
 }
 
-void CTracker::track2(const float x, const float y, const float radius, const bool display)
+void CTracker::track2(const float x, const float y, const float radius)
 {
 
     cv::Mat frame;
@@ -325,10 +325,7 @@ void CTracker::track2(const float x, const float y, const float radius, const bo
             }
 
             // Tracking failure detected.
-            if (display || m_output_video_active)
-            {
-                cv::putText(frame, "Tracking failure detected", cv::Point(100, 80), cv::FONT_HERSHEY_SIMPLEX, 0.75, cv::Scalar(0, 0, 255), 2);
-            }
+            cv::putText(frame, "Tracking failure detected", cv::Point(100, 80), cv::FONT_HERSHEY_SIMPLEX, 0.75, cv::Scalar(0, 0, 255), 2);
         }
 
         if (m_valid_track)
@@ -339,8 +336,7 @@ void CTracker::track2(const float x, const float y, const float radius, const bo
                 if (m_callback_tracker != nullptr)
                     m_callback_tracker->onTrack(revScaleX(bbox_2d.x), revScaleY(bbox_2d.y), revScaleX(bbox_2d.width), revScaleY(bbox_2d.height), m_camera_orientation, m_camera_forward);
 
-                if (display || m_output_video_active)
-                    cv::rectangle(frame, bbox_2d, cv::Scalar(0, 255, 255), 2, 1);
+                cv::rectangle(frame, bbox_2d, cv::Scalar(0, 255, 255), 2, 1);
 #ifdef DDEBUG
                 std::cout << "Tracking at " << bbox_2d << std::endl;
 #endif
@@ -354,8 +350,7 @@ void CTracker::track2(const float x, const float y, const float radius, const bo
                 std::cout << "Tracking at " << std::to_string(bbox.x) << "  --    " << std::to_string(bbox.y) << " xxx "
                           << std::to_string(bbox.width) << "  --    " << std::to_string(bbox.height) << std::endl;
 #endif
-                if (display || m_output_video_active)
-                    cv::rectangle(frame, bbox, cv::Scalar(0, 255, 255), 2, 1);
+                cv::rectangle(frame, bbox, cv::Scalar(0, 255, 255), 2, 1);
             }
         }
         
@@ -401,12 +396,6 @@ void CTracker::track2(const float x, const float y, const float radius, const bo
         }
         // --- End of new code for streaming to virtual video device ---
 
-        if (display)
-        {
-            // Display frame.
-            cv::imshow("Tracking", frame);
-            cv::waitKey(1);
-        }
     }
 
     std::cout << _LOG_CONSOLE_BOLD_TEXT << "tracking off" << _NORMAL_CONSOLE_TEXT_ << std::endl;
