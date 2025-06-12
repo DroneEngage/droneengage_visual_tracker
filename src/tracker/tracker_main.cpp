@@ -71,12 +71,11 @@ bool CTrackerMain::uninit()
     return true;
 }
 
-
-void CTrackerMain::startTracking(const float x, const float y, const float radius)
+void CTrackerMain::startTrackingRect(const float x, const float y, const float w, const float h)
 {
     m_tracker.get()->stop();
 
-    m_tracker.get()->track(x,y,radius);
+    m_tracker.get()->trackRect(x,y,w,h);
 }
 
 void CTrackerMain::stopTracking()
@@ -148,7 +147,7 @@ void CTrackerMain::onTrack (const float& x, const float& y, const float& width, 
         });
     }
 
-    #ifdef DEBUG
+    #ifdef DDEBUG
         std::cout << _INFO_CONSOLE_BOLD_TEXT << "onTrack >> " 
         << _LOG_CONSOLE_BOLD_TEXT << "  x:" << _INFO_CONSOLE_BOLD_TEXT << x
         << _LOG_CONSOLE_BOLD_TEXT << "  y:" << _INFO_CONSOLE_BOLD_TEXT << y

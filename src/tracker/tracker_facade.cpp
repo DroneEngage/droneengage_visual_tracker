@@ -1,3 +1,4 @@
+#include "../helpers/colors.hpp"
 #include "tracker_facade.hpp"
 
 
@@ -17,7 +18,13 @@ void CTracker_Facade::sendTrackingTargetsLocation( const std::string& target_par
         {"t", targets_location}
     };
 
-
+    #ifdef DEBUG
+        std::cout << "tracking:" << targets_location.dump() << std::endl;
+    #endif
+    #ifdef DEBUG
+        std::cout << _INFO_CONSOLE_BOLD_TEXT << "onTrack >> " 
+        << _LOG_CONSOLE_BOLD_TEXT << targets_location.dump() << _NORMAL_CONSOLE_TEXT_ << std::endl;
+    #endif
     m_module.sendJMSG(target_party_id, message, TYPE_AndruavMessage_TrackingTargetLocation, true);
 }
 

@@ -1,6 +1,6 @@
 #include <chrono> // For high-resolution timing
 #include <thread> // For std::this_thread::sleep_for
-
+#include <sys/mman.h>  // For mmap, munmap, PROT_READ, PROT_WRITE, MAP_SHARED, MAP_FAILED
 #include <opencv2/opencv.hpp>
 #include <opencv2/tracking.hpp>
 #include <opencv2/core/ocl.hpp>
@@ -43,7 +43,7 @@ bool CTracker::initTargetVirtualVideoDevice(const std::string &output_video_devi
     cv::cvtColor(frame, yuv_frame, cv::COLOR_BGR2YUV_I420);
 
     // Open the virtual video device
-    m_video_fd = open(m_output_video_path.c_str(), O_WRONLY | O_NONBLOCK);
+    m_video_fd = open(m_output_video_path.c_str(), O_RDWR | O_NONBLOCK);
     if (m_video_fd < 0)
     {
         std::cout << "Error: Could not open virtual video device " << m_output_video_path << ": " << strerror(errno) << std::endl;
@@ -53,31 +53,96 @@ bool CTracker::initTargetVirtualVideoDevice(const std::string &output_video_devi
     std::cout << "Successfully opened virtual video device: " << m_output_video_path << std::endl;
 
     struct v4l2_format fmt = {0};
-    fmt.type = V4L2_BUF_TYPE_VIDEO_OUTPUT; // We are outputting frames to this device
+    fmt.type = V4L2_BUF_TYPE_VIDEO_OUTPUT;
     fmt.fmt.pix.width = m_image_width;
     fmt.fmt.pix.height = m_image_height;
-    fmt.fmt.pix.pixelformat = V4L2_PIX_FMT_YUV420;  // YUV420 planar (I420)
-    fmt.fmt.pix.field = V4L2_FIELD_NONE;            // Progressive scan
-    fmt.fmt.pix.bytesperline = m_image_width;       // Stride of the Y plane
+    fmt.fmt.pix.pixelformat = V4L2_PIX_FMT_YUV420;
+    fmt.fmt.pix.field = V4L2_FIELD_NONE;
+    fmt.fmt.pix.bytesperline = m_image_width;
     fmt.fmt.pix.sizeimage = (m_image_width * m_image_height * 3) / 2;
 
     if (CVideo::xioctl(m_video_fd, VIDIOC_S_FMT, &fmt) < 0)
     {
         fprintf(stderr, "Failed to set video format on %s: %s\n", m_output_video_path.c_str(), strerror(errno));
         close(m_video_fd);
-        video_capture.release(); // Release the input video capture
-        return 1;
+        video_capture.release();
+        return false;
     }
     fprintf(stderr, "Successfully set format for %s: %dx%d, pixformat YUV420\n",
             m_output_video_path.c_str(), fmt.fmt.pix.width, fmt.fmt.pix.height);
-    // Store the calculated frame size for later writing
 
-    // Set the YUV frame size based on the expected resolution
-    m_yuv_frame_size = m_image_width * m_image_height * 3 / 2; // YUV420 format
+    // Request buffers for memory mapping
+    struct v4l2_requestbuffers req = {0};
+    req.count = 4;
+    req.type = V4L2_BUF_TYPE_VIDEO_OUTPUT;
+    req.memory = V4L2_MEMORY_MMAP;
+
+    if (CVideo::xioctl(m_video_fd, VIDIOC_REQBUFS, &req) < 0)
+    {
+        fprintf(stderr, "Failed to request buffers on %s: %s\n", m_output_video_path.c_str(), strerror(errno));
+        close(m_video_fd);
+        video_capture.release();
+        return false;
+    }
+
+    if (req.count < 2)
+    {
+        std::cout << "Insufficient buffer memory on " <<  m_output_video_path << std::endl;
+        close(m_video_fd);
+        video_capture.release();
+        return false;
+    }
+
+    // Map the buffers
+    m_buffers = new (std::nothrow) buffer[req.count];
+    
+    if (!m_buffers) {
+        std::cout << "Error: Failed to allocate memory for V4L2 buffers." << std::endl;
+        close(m_video_fd);
+        m_video_fd = -1;
+        return false;
+    }
+
+    for (unsigned int i = 0; i < req.count; ++i)
+    {
+        m_buffers[i].start = nullptr; // Initialize to nullptr
+        m_buffers[i].length = 0;      // Initialize to 0
+
+        struct v4l2_buffer buf = {0};
+        buf.type = V4L2_BUF_TYPE_VIDEO_OUTPUT;
+        buf.memory = V4L2_MEMORY_MMAP;
+        buf.index = i;
+
+        if (CVideo::xioctl(m_video_fd, VIDIOC_QUERYBUF, &buf) < 0)
+        {
+            fprintf(stderr, "Failed to query buffer %u on %s: %s\n", i, m_output_video_path.c_str(), strerror(errno));
+            close(m_video_fd);
+            video_capture.release();
+            return false;
+        }
+
+        m_buffers[i].length = buf.length;
+        m_buffers[i].start = mmap(NULL, buf.length,
+                                 PROT_READ | PROT_WRITE,
+                                 MAP_SHARED,
+                                 m_video_fd, buf.m.offset);
+
+        if (m_buffers[i].start == MAP_FAILED)
+        {
+            fprintf(stderr, "Failed to map buffer %u on %s: %s\n", i, m_output_video_path.c_str(), strerror(errno));
+            close(m_video_fd);
+            video_capture.release();
+            return false;
+        }
+    }
+
+    m_yuv_frame_size = m_image_width * m_image_height * 3 / 2;
+    m_buffer_count = req.count;
+    m_current_buffer_index = 0;
 
     m_virtual_device_opened = true;
     return true;
-};
+}
 
 bool CTracker::init(const enum ENUM_TRACKER_TYPE tracker_type, const std::string& video_path, const uint16_t camera_orientation, const bool camera_forward, const std::string& output_video_device)
 {
@@ -188,10 +253,39 @@ bool CTracker::init(const enum ENUM_TRACKER_TYPE tracker_type, const std::string
 
     return true;
 }
+void CTracker::destroyVirtualVideoDevice()
+{
+    if (m_buffers) // Only proceed if m_buffers was allocated
+    {
+        for (unsigned int i = 0; i < m_buffer_count; ++i)
+        {
+            if (m_buffers[i].start != MAP_FAILED && m_buffers[i].start != nullptr)
+            {
+                if (munmap(m_buffers[i].start, m_buffers[i].length) == -1)
+                {
+                    std::cerr << "Error: Failed to munmap buffer " << i << ": " << strerror(errno) << std::endl;
+                    // Log the error but continue to try and unmap other buffers
+                }
+            }
+        }
+        delete[] m_buffers;
+        m_buffers = nullptr; // Prevent dangling pointer and double deallocation
+        m_buffer_count = 0;
+    }
 
+    if (m_video_fd != -1) // Close file descriptor if it's open
+    {
+        close(m_video_fd);
+        m_video_fd = -1; // Indicate file descriptor is closed
+        std::cout << "Virtual video device closed." << std::endl;
+    }
+    m_virtual_device_opened = false;
+}
 bool CTracker::uninit()
 {
     stop();
+    
+    
     return true;
 }
 
@@ -209,6 +303,22 @@ void CTracker::stop()
         m_framesThread.join();
 }
 
+void CTracker::trackRect(const float x, const float y, const float w, const float h)
+{
+    m_valid_track = false;
+
+    std::cout << "X,y,r:" << std::to_string(x) << "," << std::to_string(y) << "," << std::to_string(w) << "," << std::to_string(h) << _NORMAL_CONSOLE_TEXT_ << std::endl;
+
+    if (m_video_path == std::string(""))
+    {
+        // TODO: send error message.
+        return;
+    }
+
+    m_framesThread = std::thread([x, y, w, h, this]()
+                                 { this->track2Rect(x, y, w, h); });
+}
+
 void CTracker::track(const float x, const float y, const float radius)
 {
     m_valid_track = false;
@@ -222,10 +332,11 @@ void CTracker::track(const float x, const float y, const float radius)
     }
 
     m_framesThread = std::thread([x, y, radius, this]()
-                                 { this->track2(x, y, radius); });
+                                 { this->track2Rect(x, y, radius, radius); });
 }
 
-void CTracker::track2(const float x, const float y, const float radius)
+
+void CTracker::track2Rect(const float x, const float y, const float w, const float h)
 {
     // Pre-allocate Mats to avoid re-allocations in the loop
     // 'frame' will store the captured video frame (BGR)
@@ -274,22 +385,25 @@ void CTracker::track2(const float x, const float y, const float radius)
     // Define initial bounding box - calculations only needed once
     float scaled_x = x * m_image_width;
     float scaled_y = y * m_image_height;
+    float scaled_width = w * m_image_width;
+    float scaled_height = h * m_image_height;
     // Simplify boolean check
     const bool is_tracking_active_initial = (x > 0);
 
     // Clamp coordinates within frame boundaries using std::clamp for conciseness and safety
     // Assuming radius is the side length, so bbox_x + radius should be <= width
-    scaled_x = std::clamp(scaled_x, 0.0f, static_cast<float>(m_image_width) - radius);
-    scaled_y = std::clamp(scaled_y, 0.0f, static_cast<float>(m_image_height) - radius);
+    scaled_x = std::clamp(scaled_x, 0.0f, static_cast<float>(m_image_width) - scaled_width);
+    scaled_y = std::clamp(scaled_y, 0.0f, static_cast<float>(m_image_height) - scaled_height);
 
+    std::cout << "scaled_x:" << scaled_x << " scaled_y:" << scaled_y << "scaled_h:" << scaled_height << "scaled_w:" << scaled_width << std::endl;
 
 #ifdef DDEBUG
     std::cout << "scaled_x,scaled_y:" << scaled_x << ":" << scaled_y << _NORMAL_CONSOLE_TEXT_ << std::endl;
 #endif
 
     // Initialize bounding boxes for the tracker
-    bbox_2d = cv::Rect2d(scaled_x, scaled_y, radius, radius);
-    bbox = cv::Rect(static_cast<int>(scaled_x), static_cast<int>(scaled_y), static_cast<int>(radius), static_cast<int>(radius)); // Cast to int for cv::Rect
+    bbox_2d = cv::Rect2d(scaled_x, scaled_y, scaled_width, scaled_height);
+    bbox = cv::Rect(static_cast<int>(scaled_x), static_cast<int>(scaled_y), static_cast<int>(scaled_width), static_cast<int>(scaled_height)); // Cast to int for cv::Rect
 
 
     if (is_tracking_active_initial)
@@ -382,7 +496,7 @@ void CTracker::track2(const float x, const float y, const float radius)
                 cv::putText(frame, "Tracking failure detected", cv::Point(100, 80), cv::FONT_HERSHEY_SIMPLEX, 0.75, cv::Scalar(0, 0, 255), 2);
             }
         }
-        else // Not tracking (x <= 0 initially)
+        else 
         {
             // If not tracking, ensure status is consistently false and update only if it changes
             if (current_valid_track_status != false) // Only call callback if status changes
@@ -391,16 +505,11 @@ void CTracker::track2(const float x, const float y, const float radius)
                 if (callback_tracker)
                     callback_tracker->onTrackStatusChanged(false);
             }
-            // If you want to put text regardless of tracking, uncomment or move this:
-            // cv::putText(frame, "Tracking inactive", cv::Point(100, 80), cv::FONT_HERSHEY_SIMPLEX, 0.75, cv::Scalar(0, 255, 0), 2);
         }
 
         // --- Streaming to Virtual Video Device ---
         if (m_video_fd != -1)
         {
-            // Convert BGR frame (from OpenCV) to YUYV (or I420 based on your initial setup for m_yuv_frame_size)
-            // COLOR_BGR2YUV_I420 is Planar YUV. If your V4L2 device expects packed YUYV, use COLOR_BGR2YUYV.
-            // Check your m_yuv_frame_size; it's likely for I420 if calculated as width*height*3/2.
             cv::cvtColor(frame, yuv_frame, cv::COLOR_BGR2YUV_I420); // Or COLOR_BGR2YUYV if that's what m_yuv_frame_size implies
 
             // Check continuity once after conversion. Size check is critical.
@@ -449,16 +558,15 @@ void CTracker::track2(const float x, const float y, const float radius)
             #endif
                         std::this_thread::sleep_for(time_to_sleep);
                     }
-            #ifdef DDEBUG
+            #ifdef DEBUG
                     else
                     {
-                        std::cout << "Warning: Frame processing took " << elapsed_time.count() << "ms, exceeding target "
-                                << target_frame_time_ms.count() << "ms. Cannot maintain 30 FPS." << std::endl;
+                        std::cout << _INFO_CONSOLE_BOLD_TEXT << "Warning: Frame processing took " << _LOG_CONSOLE_BOLD_TEXT << elapsed_time.count() << "ms " << _INFO_CONSOLE_BOLD_TEXT << ", exceeding target "
+                                << _LOG_CONSOLE_BOLD_TEXT << target_frame_time_ms.count() << "ms." << _INFO_CONSOLE_BOLD_TEXT << " Cannot maintain 30 FPS." << _NORMAL_CONSOLE_TEXT_ << std::endl;
                     }
             #endif
 
         } // End of while (m_process) loop
 
     std::cout << _LOG_CONSOLE_BOLD_TEXT << "tracking off" << _NORMAL_CONSOLE_TEXT_ << std::endl;
-    // Any necessary cleanup after the loop
 }

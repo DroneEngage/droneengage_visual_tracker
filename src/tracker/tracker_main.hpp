@@ -62,7 +62,7 @@ namespace tracker
         
         public:
             
-            void startTracking(const float x, const float y, const float radius);
+            void startTrackingRect(const float x, const float y, const float w, const float h);
             void stopTracking();
 
 

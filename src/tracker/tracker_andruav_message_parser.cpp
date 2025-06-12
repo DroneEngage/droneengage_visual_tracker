@@ -30,27 +30,57 @@ void CTrackerAndruavMessageParser::parseMessage (Json_de &andruav_message, const
 
             case TYPE_AndruavMessage_TrackingTarget_ACTION:
             {
-                // a: center X
-                // b: center Y
-                // r: radius
-
+                
                 if (!cmd.contains("a") || !cmd["a"].is_number_integer()) return ;
 
                 switch (cmd["a"].get<int>())
                 {
 
                     case TrackingTarget_ACTION_TRACKING_POINT:
-                    
+                    {
+                    // a: center X
+                    // b: center Y
+                    // r: radius
+
                         if (!validateField(cmd, "b", Json_de::value_t::number_float)) return ;
                         if (!validateField(cmd, "c", Json_de::value_t::number_float)) return ;
-                        if (!validateField(cmd, "r", Json_de::value_t::number_unsigned)) return ;
+                        if (!validateField(cmd, "r", Json_de::value_t::number_float)) return ;
                         
-                        m_trackerMain.startTracking(cmd["b"].get<float>(),
-                                                    cmd["c"].get<float>(), 
-                                                    cmd["r"].get<float>());
+                        const float x = cmd["b"].get<float>();
+                        const float y = cmd["c"].get<float>();
+                        const float r = cmd["r"].get<float>();
+                        
+                        // minimum track dimension
+                        if (r <= 0.01f) break;
+                       
+                        m_trackerMain.startTrackingRect(x, y, r, r);
+                    }
                     break;
 
                     case TrackingTarget_ACTION_TRACKING_REGION:
+                    {
+                    
+                        // b: 
+                        // c:
+                        // d:
+                        // e:
+
+                        if (!validateField(cmd, "b", Json_de::value_t::number_float)) return ;
+                        if (!validateField(cmd, "c", Json_de::value_t::number_float)) return ;
+                        if (!validateField(cmd, "d", Json_de::value_t::number_float)) return ;
+                        if (!validateField(cmd, "e", Json_de::value_t::number_float)) return ;
+
+                        const float x = cmd["b"].get<float>();
+                        const float y = cmd["c"].get<float>();
+                        const float w = cmd["d"].get<float>();
+                        const float h = cmd["e"].get<float>();
+                        
+                        // minimum track dimension
+                        if (w <= 0.01f) break;
+                        if (h <= 0.01f) break;
+                       
+                        m_trackerMain.startTrackingRect(x, y, w, h);
+                    }
                     break;
                     
                     case TrackingTarget_ACTION_TRACKING_STOP:

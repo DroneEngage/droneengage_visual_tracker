@@ -27,6 +27,13 @@
 #define DEF_TRACK_ORIENTATION_DEG_270   3
 
 
+typedef struct buffer {
+    void* start;
+    size_t length;
+} BUFFER;
+
+
+
 namespace de
 {
 namespace tracker
@@ -65,6 +72,7 @@ namespace tracker
             ~CTracker() 
             {
                 uninit();
+                //destroyVirtualVideoDevice(); // Clean up V4L2 resources
             };
 
             
@@ -73,7 +81,8 @@ namespace tracker
             bool init (const enum ENUM_TRACKER_TYPE tracker_type, const std::string& video_path, const uint16_t camera_orientation , const bool camera_forward, const std::string& output_video_device);
             bool uninit();
             void track(const float x, const float y, const float radius);
-            void track2(const float x, const float y, const float radius);
+            void trackRect(const float x, const float y, const float w, const float h);
+            void track2Rect(const float x, const float y, const float w, const float h);
             void stop();
             const std::string getActiveTracker() 
             {
@@ -101,9 +110,9 @@ namespace tracker
         protected:
             bool getVideoResolution(const std::string& video_device_path, unsigned int& width, unsigned int& height);
             bool initTargetVirtualVideoDevice(const std::string& output_video_device);
+            void destroyVirtualVideoDevice();
 
         protected:
-            
             /**
              * output from 0 to 1.0
              * (0,0) top left
@@ -151,6 +160,9 @@ namespace tracker
 
             uint32_t m_target_fps = 30; 
 
+            BUFFER * m_buffers;
+            unsigned int m_buffer_count;
+            unsigned int m_current_buffer_index;
     };
 
 }
