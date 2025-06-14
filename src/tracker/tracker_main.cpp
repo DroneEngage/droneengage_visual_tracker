@@ -78,6 +78,12 @@ void CTrackerMain::startTrackingRect(const float x, const float y, const float w
     m_tracker.get()->trackRect(x,y,w,h);
 }
 
+void CTrackerMain::pauseTracking()
+{
+    m_tracker.get()->pause();
+}
+
+
 void CTrackerMain::stopTracking()
 {
     m_tracker.get()->stop();

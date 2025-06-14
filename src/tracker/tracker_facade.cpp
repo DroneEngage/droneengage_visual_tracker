@@ -18,7 +18,7 @@ void CTracker_Facade::sendTrackingTargetsLocation( const std::string& target_par
         {"t", targets_location}
     };
 
-    #ifdef DEBUG
+    #ifdef DDEBUG
         std::cout << "tracking:" << targets_location.dump() << std::endl;
     #endif
     #ifdef DEBUG

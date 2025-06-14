@@ -63,8 +63,9 @@ namespace tracker
         public:
             
             void startTrackingRect(const float x, const float y, const float w, const float h);
+            void pauseTracking();
             void stopTracking();
-
+            
 
         public:
             //CCommon_Callback

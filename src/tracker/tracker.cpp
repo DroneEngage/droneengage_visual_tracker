@@ -289,6 +289,12 @@ bool CTracker::uninit()
     return true;
 }
 
+
+void CTracker::pause()
+{
+    m_is_tracking_active_initial = false;
+}
+
 void CTracker::stop()
 {
     if (!m_process) return ; 
@@ -388,7 +394,7 @@ void CTracker::track2Rect(const float x, const float y, const float w, const flo
     float scaled_width = w * m_image_width;
     float scaled_height = h * m_image_height;
     // Simplify boolean check
-    const bool is_tracking_active_initial = (x > 0);
+    m_is_tracking_active_initial = (x > 0);
 
     // Clamp coordinates within frame boundaries using std::clamp for conciseness and safety
     // Assuming radius is the side length, so bbox_x + radius should be <= width
@@ -406,7 +412,7 @@ void CTracker::track2Rect(const float x, const float y, const float w, const flo
     bbox = cv::Rect(static_cast<int>(scaled_x), static_cast<int>(scaled_y), static_cast<int>(scaled_width), static_cast<int>(scaled_height)); // Cast to int for cv::Rect
 
 
-    if (is_tracking_active_initial)
+    if (m_is_tracking_active_initial)
     {
         if (m_islegacy)
         {
@@ -444,7 +450,7 @@ void CTracker::track2Rect(const float x, const float y, const float w, const flo
         }
 
         // --- Tracking Logic ---
-        if (is_tracking_active_initial) // Use the initial tracking state
+        if (m_is_tracking_active_initial) // Use the initial tracking state
         {
             bool new_valid_track;
             if (m_islegacy)

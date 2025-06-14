@@ -210,7 +210,7 @@ void initDEModule(int argc, char *argv[])
         Json_de::array(MESSAGE_FILTER)
     );
 
-    cModule.addModuleFeatures(MODULE_FEATURE_GPIO);
+    cModule.addModuleFeatures(MODULE_FEATURE_TRACKING);
     cModule.setHardware(hardware_serial, ENUM_HARDWARE_TYPE::HARDWARE_TYPE_CPU);
     cModule.setMessageOnReceive (&onReceive);
 

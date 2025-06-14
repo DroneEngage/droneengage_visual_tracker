@@ -382,6 +382,7 @@
 #define TrackingTarget_ACTION_TRACKING_POINT    0
 #define TrackingTarget_ACTION_TRACKING_REGION   1
 #define TrackingTarget_ACTION_TRACKING_STOP     2
+#define TrackingTarget_ACTION_TRACKING_PAUSE    3
 
 // TYPE_AndruavMessage_TargetTracking_STATUS
 #define TrackingTarget_STATUS_TRACKING_LOST     0

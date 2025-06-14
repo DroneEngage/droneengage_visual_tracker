@@ -83,6 +83,7 @@ namespace tracker
             void track(const float x, const float y, const float radius);
             void trackRect(const float x, const float y, const float w, const float h);
             void track2Rect(const float x, const float y, const float w, const float h);
+            void pause();
             void stop();
             const std::string getActiveTracker() 
             {
@@ -154,7 +155,8 @@ namespace tracker
             int m_yuv_frame_size = 0;
 
             bool m_virtual_device_opened = false;
-
+            bool m_is_tracking_active_initial = false;
+            
             bool m_camera_forward    = false;
             uint16_t m_camera_orientation   = DEF_TRACK_ORIENTATION_DEG_0;
 

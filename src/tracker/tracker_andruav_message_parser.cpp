@@ -86,6 +86,10 @@ void CTrackerAndruavMessageParser::parseMessage (Json_de &andruav_message, const
                     case TrackingTarget_ACTION_TRACKING_STOP:
                         m_trackerMain.stopTracking();
                     break;
+
+                    case TrackingTarget_ACTION_TRACKING_PAUSE:
+                        m_trackerMain.pauseTracking();
+                    break;
                 }
             }
             break;
