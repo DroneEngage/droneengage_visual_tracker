@@ -85,15 +85,15 @@ void CTrackerMain::stopTracking()
 
 /**
  * Called when there is a a tracked object.
- * output from 0 to 1.0
+ * output from -0.5 to 0.5
  * (0,0) top left
  * center = [(x + w )/2 , (y + h)/2]
  */
 void CTrackerMain::onTrack (const float& x, const float& y, const float& width, const float& height, const uint16_t camera_orientation, const bool camera_forward) 
 {
 
-   const double center_x = 0.5 -  x + width /2.0f; 
-   const double center_y = 0.5 - y + height /2.0f; 
+   const double center_x = -0.5 +  x + width /2.0f; 
+   const double center_y = -0.5 + y + height /2.0f; 
       
    double delta_x,delta_y,delta_z;
 
