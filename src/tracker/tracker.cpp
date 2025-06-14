@@ -474,7 +474,7 @@ void CTracker::track2Rect(const float x, const float y, const float w, const flo
                                                    m_camera_orientation, m_camera_forward);
                     cv::rectangle(frame, bbox_2d, cv::Scalar(0, 255, 255), 2, 1);
 #ifdef DDEBUG
-                    std::cout << "Tracking at " << bbox_2d << std::endl;
+                    std::cout << "Tracking_legacy at " << bbox_2d << std::endl;
 #endif
                 }
                 else
@@ -484,7 +484,7 @@ void CTracker::track2Rect(const float x, const float y, const float w, const flo
                                                    revScaleX(bbox.width), revScaleY(bbox.height),
                                                    m_camera_orientation, m_camera_forward);
 #ifdef DDEBUG
-                    std::cout << "Tracking at " << bbox.x << "  --    " << bbox.y << " xxx "
+                    std::cout << "Tracking at " << bbox.x << " revX:" << revScaleX(bbox.x) << "  --    " << bbox.y << " revY:" << revScaleY(bbox.y) << " xxx "
                               << bbox.width << "  --    " << bbox.height << std::endl; // Directly print ints
 #endif
                     cv::rectangle(frame, bbox, cv::Scalar(0, 255, 255), 2, 1);
@@ -518,8 +518,7 @@ void CTracker::track2Rect(const float x, const float y, const float w, const flo
                 ssize_t bytes_written = write(m_video_fd, yuv_frame.data, m_yuv_frame_size);
                 if (bytes_written < 0)
                 {
-                    // Use std::cerr for errors, std::cout for general logs
-                    std::cerr << "Error: Failed to write frame to " << m_output_video_path << ": " << strerror(errno) << std::endl;
+                    std::cout << "Error: Failed to write frame to " << m_output_video_path << ": " << strerror(errno) << std::endl;
                     if (errno == EAGAIN || errno == EWOULDBLOCK)
                     {
                         // This warning is fine to output, but don't stop the loop.
@@ -530,10 +529,6 @@ void CTracker::track2Rect(const float x, const float y, const float w, const flo
                     }
                     // For other severe errors, consider setting m_process = false;
                 }
-                // Don't spam incomplete write warnings unless debugging
-                // else if (static_cast<size_t>(bytes_written) != m_yuv_frame_size) {
-                //     std::cerr << "Warning: Incomplete frame write to " << m_output_video_path << " (wrote " << bytes_written << " of " << m_yuv_frame_size << " bytes)" << std::endl;
-                // }
             }
             else
             {
@@ -542,7 +537,6 @@ void CTracker::track2Rect(const float x, const float y, const float w, const flo
                           << yuv_frame.total() * yuv_frame.elemSize() << " vs " << m_yuv_frame_size
                           << "). Cannot write to V4L2 device. Stopping stream." << std::endl;
                 // Consider setting m_process = false; or closing m_video_fd
-                // m_process = false;
             }
         }
 
@@ -558,7 +552,7 @@ void CTracker::track2Rect(const float x, const float y, const float w, const flo
             #endif
                         std::this_thread::sleep_for(time_to_sleep);
                     }
-            #ifdef DEBUG
+            #ifdef DDEBUG
                     else
                     {
                         std::cout << _INFO_CONSOLE_BOLD_TEXT << "Warning: Frame processing took " << _LOG_CONSOLE_BOLD_TEXT << elapsed_time.count() << "ms " << _INFO_CONSOLE_BOLD_TEXT << ", exceeding target "
