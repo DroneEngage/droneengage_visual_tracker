@@ -56,7 +56,7 @@ namespace tracker
     {
         public:
             virtual void onTrack (const float& x, const float& y, const float& width, const float& height, const uint16_t camera_orientation, const bool camera_forward) = 0;
-            virtual void onTrackStatusChanged (const bool& track) = 0;
+            virtual void onTrackStatusChanged (const int& track) = 0;
     };
 
     class CTracker 

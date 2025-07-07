@@ -14,7 +14,7 @@
 #include <unistd.h>
 #include <sys/ioctl.h>
 #include <linux/videodev2.h>
-
+#include "../de_common/messages.hpp"
 using namespace de::tracker;
 
 std::thread m_framesThread;
@@ -293,6 +293,11 @@ bool CTracker::uninit()
 void CTracker::pause()
 {
     m_is_tracking_active_initial = false;
+
+    if (m_callback_tracker != nullptr)
+    {
+        m_callback_tracker->onTrackStatusChanged(TrackingTarget_STATUS_TRACKING_STOPPED);
+    }
 }
 
 void CTracker::stop()
@@ -302,7 +307,7 @@ void CTracker::stop()
     m_valid_track = false;
     if (m_callback_tracker != nullptr)
     {
-        m_callback_tracker->onTrackStatusChanged(false);
+        m_callback_tracker->onTrackStatusChanged(TrackingTarget_STATUS_TRACKING_STOPPED);
     }
 
     if (m_framesThread.joinable())
@@ -466,7 +471,7 @@ void CTracker::track2Rect(const float x, const float y, const float w, const flo
             {
                 current_valid_track_status = new_valid_track; // Update internal state
                 if (callback_tracker) // Use cached pointer
-                    callback_tracker->onTrackStatusChanged(current_valid_track_status);
+                    callback_tracker->onTrackStatusChanged(TrackingTarget_STATUS_TRACKING_DETECTED);
             }
 
             if (current_valid_track_status)
@@ -509,7 +514,7 @@ void CTracker::track2Rect(const float x, const float y, const float w, const flo
             {
                 current_valid_track_status = false;
                 if (callback_tracker)
-                    callback_tracker->onTrackStatusChanged(false);
+                    callback_tracker->onTrackStatusChanged(TrackingTarget_STATUS_TRACKING_LOST);
             }
         }
 

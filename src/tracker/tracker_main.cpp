@@ -76,17 +76,32 @@ void CTrackerMain::startTrackingRect(const float x, const float y, const float w
     m_tracker.get()->stop();
 
     m_tracker.get()->trackRect(x,y,w,h);
+
+    m_trackerFacade.sendTrackingTargetStatus (
+        std::string(""),
+        TrackingTarget_STATUS_TRACKING_ENABLED
+    );
 }
 
 void CTrackerMain::pauseTracking()
 {
     m_tracker.get()->pause();
+
+    m_trackerFacade.sendTrackingTargetStatus (
+        std::string(""),
+        TrackingTarget_STATUS_TRACKING_STOPPED
+    );
 }
 
 
 void CTrackerMain::stopTracking()
 {
     m_tracker.get()->stop();
+    
+    m_trackerFacade.sendTrackingTargetStatus (
+        std::string(""),
+        TrackingTarget_STATUS_TRACKING_STOPPED
+    );
 }
 
 /**
@@ -175,12 +190,14 @@ void CTrackerMain::onTrack (const float& x, const float& y, const float& width, 
 /**
  * Called once trackig status changed.
  */
-void CTrackerMain::onTrackStatusChanged (const bool& track)  
+void CTrackerMain::onTrackStatusChanged (const int& status)  
 {
     m_trackerFacade.sendTrackingTargetStatus (
         std::string(""),
-        track
+        status
     );
     
+    #ifdef DDEBUG
     std::cout << _INFO_CONSOLE_BOLD_TEXT << "onTrackStatusChanged:" << _LOG_CONSOLE_BOLD_TEXT << std::to_string(track) << _NORMAL_CONSOLE_TEXT_ << std::endl;
+    #endif
 }
