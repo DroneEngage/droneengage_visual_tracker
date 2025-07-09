@@ -97,7 +97,7 @@ void CTrackerMain::pauseTracking()
 void CTrackerMain::stopTracking()
 {
     m_tracker.get()->stop();
-    
+
     m_trackerFacade.sendTrackingTargetStatus (
         std::string(""),
         TrackingTarget_STATUS_TRACKING_STOPPED
@@ -125,8 +125,8 @@ void CTrackerMain::onTrack (const float& x, const float& y, const float& width, 
             delta_y =  center_y;
         break;
     case DEF_TRACK_ORIENTATION_DEG_90:
-            delta_x = -center_y;
-            delta_y =  center_x;
+            delta_x =   center_y;
+            delta_y =  -center_x;
         break;
     
     case DEF_TRACK_ORIENTATION_DEG_180:
@@ -135,8 +135,8 @@ void CTrackerMain::onTrack (const float& x, const float& y, const float& width, 
         break;
 
     case DEF_TRACK_ORIENTATION_DEG_270:
-            delta_x =  center_y;
-            delta_y = -center_x;
+            delta_x =  -center_y;
+            delta_y =  -center_x;
         break;
     
     default:
@@ -155,7 +155,7 @@ void CTrackerMain::onTrack (const float& x, const float& y, const float& width, 
     {
         targets.push_back({
             {"x",delta_x},
-            {"y",delta_y}
+            {"y",-delta_y}
         });
     }
     else
