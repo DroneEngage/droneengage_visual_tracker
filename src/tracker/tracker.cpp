@@ -379,6 +379,8 @@ void CTracker::track2Rect(const float x, const float y, const float w, const flo
 
     // Capture the first frame to get dimensions. This only needs to happen once.
     video_capture >> frame;
+
+    
     if (frame.empty())
     {
         std::cerr << _ERROR_CONSOLE_BOLD_TEXT_ << "ERROR:" << _INFO_CONSOLE_TEXT << " First frame is empty from "
@@ -392,6 +394,12 @@ void CTracker::track2Rect(const float x, const float y, const float w, const flo
 #ifdef DDEBUG
     std::cout << _LOG_CONSOLE_BOLD_TEXT << "frame: " << _INFO_CONSOLE_TEXT << m_image_width << "x" << m_image_height << _NORMAL_CONSOLE_TEXT_ << std::endl;
 #endif
+
+    // Calculate the center of the frame - calculations only needed once
+    const int center_x = frame.cols / 2;
+    const int center_y = frame.rows / 2;
+    // Define the length of the cross arms (you can adjust this)
+    const int cross_arm_length = 30; // pixels
 
     // Define initial bounding box - calculations only needed once
     float scaled_x = x * m_image_width;
@@ -457,6 +465,20 @@ void CTracker::track2Rect(const float x, const float y, const float w, const flo
         // --- Tracking Logic ---
         if (m_is_tracking_active_initial) // Use the initial tracking state
         {
+            
+            
+            // Draw the horizontal line of the cross
+            cv::line(frame, cv::Point(center_x - cross_arm_length, center_y),
+                cv::Point(center_x + cross_arm_length, center_y),
+                cv::Scalar(0, 255, 0), 2); // Green color (BGR), thickness 2
+
+            // Draw the vertical line of the cross
+            cv::line(frame, cv::Point(center_x, center_y - cross_arm_length),
+                cv::Point(center_x, center_y + cross_arm_length),
+                cv::Scalar(0, 255, 0), 2); // Green color (BGR), thickness 2
+
+
+        
             bool new_valid_track;
             if (m_islegacy)
             {
