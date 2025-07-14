@@ -501,7 +501,7 @@ void CTracker::track2Rect(const float x, const float y, const float w, const flo
                 // Tracking success: Draw the tracked object and call callback
                 if (m_islegacy)
                 {
-                    if (callback_tracker && (message_rate % 10 == 0))
+                    if (callback_tracker && (message_rate % 100 == 0))
                         callback_tracker->onTrack(revScaleX(bbox_2d.x), revScaleY(bbox_2d.y),
                                                    revScaleX(bbox_2d.width), revScaleY(bbox_2d.height),
                                                    m_camera_orientation, m_camera_forward);
