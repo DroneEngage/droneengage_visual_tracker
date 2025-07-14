@@ -443,7 +443,7 @@ void CTracker::track2Rect(const float x, const float y, const float w, const flo
     auto *callback_tracker = m_callback_tracker;
     bool current_valid_track_status = false; // Initialize to false, assuming no track initially
 
-
+    uint64_t message_rate = 0;
     // --- Main Tracking and Streaming Loop ---
     while (m_process)
     {
@@ -501,7 +501,7 @@ void CTracker::track2Rect(const float x, const float y, const float w, const flo
                 // Tracking success: Draw the tracked object and call callback
                 if (m_islegacy)
                 {
-                    if (callback_tracker)
+                    if (callback_tracker && (message_rate % 10 == 0))
                         callback_tracker->onTrack(revScaleX(bbox_2d.x), revScaleY(bbox_2d.y),
                                                    revScaleX(bbox_2d.width), revScaleY(bbox_2d.height),
                                                    m_camera_orientation, m_camera_forward);
