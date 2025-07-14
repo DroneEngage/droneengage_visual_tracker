@@ -54,7 +54,7 @@ bool CTracker::initTargetVirtualVideoDevice(const std::string &output_video_devi
         return false;
     }
 
-    std::cout << "Successfully opened virtual video device: " << m_output_video_path << std::endl;
+    std::cout << _SUCCESS_CONSOLE_BOLD_TEXT_<< "Successfully opened virtual video device: " << _LOG_CONSOLE_BOLD_TEXT << m_output_video_path << std::endl;
 
     struct v4l2_format fmt = {0};
     fmt.type = V4L2_BUF_TYPE_VIDEO_OUTPUT;
@@ -232,7 +232,7 @@ bool CTracker::init(const enum ENUM_TRACKER_TYPE tracker_type, const std::string
     }
     else
     {
-        std::cout << _SUCCESS_CONSOLE_BOLD_TEXT_ << "Video Capture:" << _INFO_CONSOLE_TEXT << video_path << _NORMAL_CONSOLE_TEXT_ << std::endl;
+        std::cout << _SUCCESS_CONSOLE_BOLD_TEXT_ << "Video Capture:" << _LOG_CONSOLE_BOLD_TEXT << video_path << _NORMAL_CONSOLE_TEXT_ << std::endl;
     }
 
     // Read the first frame to get its actual width and height

@@ -49,7 +49,7 @@ bool CVideo::getVideoResolution (const std::string& video_device_path, unsigned 
         width = fmt.fmt.pix.width;
         height = fmt.fmt.pix.height;
         std::cout << _SUCCESS_CONSOLE_TEXT_ << "Queried V4L2 device " << _LOG_CONSOLE_BOLD_TEXT << video_device_path
-                  << _INFO_CONSOLE_TEXT << " Resolution: " << _LOG_CONSOLE_BOLD_TEXT << width 
+                  << _SUCCESS_CONSOLE_TEXT_ << " Resolution: " << _LOG_CONSOLE_BOLD_TEXT << width 
                   << _INFO_CONSOLE_TEXT << "x" << _LOG_CONSOLE_BOLD_TEXT << height << _NORMAL_CONSOLE_TEXT_ << std::endl;
         close(fd);
         return true;
