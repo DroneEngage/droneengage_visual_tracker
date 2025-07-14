@@ -39,11 +39,25 @@ bool CTrackerMain::init()
     {
         output_video_device = m_jsonConfig["output_video_device"];
     }
+
+    uint16_t frames_to_skip_between_messages = FRAMES_TO_SKIP_BETWEEN_MESSAGES;
+    if (m_jsonConfig.contains("frames_to_skip_between_messages"))
+    {
+        frames_to_skip_between_messages = m_jsonConfig["frames_to_skip_between_messages"].get<uint16_t>();
+    }
+
+    uint16_t frame_to_skip_between_track_process = FRAMES_TO_SKIP_BETWEEN_TRACK_PROCESS;
+    if (m_jsonConfig.contains("frame_to_skip_between_track_process"))
+    {
+        frame_to_skip_between_track_process = m_jsonConfig["frame_to_skip_between_track_process"].get<uint16_t>();
+    }
     
     uint16_t camera_orientation = m_jsonConfig["camera_orientation"].get<uint16_t>();
     bool camera_forward = m_jsonConfig["camera_forward"].get<bool>();
 
-    bool res = m_tracker.get()->init(m_jsonConfig["tracker_algorithm_index"], m_jsonConfig["source_video_device"], camera_orientation, camera_forward, output_video_device);
+    bool res = m_tracker.get()->init(m_jsonConfig["tracker_algorithm_index"], m_jsonConfig["source_video_device"]
+        , camera_orientation, camera_forward, output_video_device
+        , frames_to_skip_between_messages, frame_to_skip_between_track_process) ;
     if (res == false)
     {
         std::cout << _ERROR_CONSOLE_BOLD_TEXT_ << "FATAL ERROR:" << _INFO_CONSOLE_TEXT << " Failed to initialize tracker. " <<  _NORMAL_CONSOLE_TEXT_ << std::endl;

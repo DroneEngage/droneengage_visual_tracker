@@ -26,8 +26,13 @@
     "tracker_algorithm_index"     : 7,
 
     // Specific Module Parameters
-    "source_video_device"               : "/dev/video3",
-    "output_video_device"               : "/dev/video2",
+    "source_video_device"               : "/dev/video2",
+    "output_video_device"               : "/dev/video3",
     "camera_orientation"                : 0, // 0b0000 bit:0 horizontal/vertical, bits1,2: rotation (0,90,180,270)
-    "camera_forward"                    : false
+    "camera_forward"                    : false,
+
+
+    // Advanced Parameters:
+    "frames_to_skip_between_messages"    :  15,         //optional default: 15
+    "frame_to_skip_between_track_process":  5           //optional default: 5
 }

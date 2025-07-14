@@ -27,6 +27,13 @@
 #define DEF_TRACK_ORIENTATION_DEG_270   3
 
 
+// Delay in processing OnTrack by the unit is high, so sending a full rate messages
+// is not needed especially that mavlink module has its own timing and discards messsages 
+// with small timespan.
+// The reason I dont skip the tracking process itself is to increase the probability of locking on the object.
+#define FRAMES_TO_SKIP_BETWEEN_MESSAGES 15  
+#define FRAMES_TO_SKIP_BETWEEN_TRACK_PROCESS 5 
+
 typedef struct buffer {
     void* start;
     size_t length;
@@ -78,7 +85,9 @@ namespace tracker
             
 
         public:
-            bool init (const enum ENUM_TRACKER_TYPE tracker_type, const std::string& video_path, const uint16_t camera_orientation , const bool camera_forward, const std::string& output_video_device);
+            bool init (const enum ENUM_TRACKER_TYPE tracker_type, const std::string& video_path
+                , const uint16_t camera_orientation , const bool camera_forward, const std::string& output_video_device
+                , uint16_t frames_to_skip_between_messages, uint16_t frame_to_skip_between_track_process);
             bool uninit();
             void track(const float x, const float y, const float radius);
             void trackRect(const float x, const float y, const float w, const float h);
@@ -165,6 +174,10 @@ namespace tracker
             BUFFER * m_buffers;
             unsigned int m_buffer_count;
             unsigned int m_current_buffer_index;
+
+
+            uint16_t m_frames_to_skip_between_messages  = FRAMES_TO_SKIP_BETWEEN_MESSAGES;
+            uint16_t m_frame_to_skip_between_track_process = FRAMES_TO_SKIP_BETWEEN_TRACK_PROCESS;
     };
 
 }

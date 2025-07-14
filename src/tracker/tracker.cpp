@@ -20,12 +20,7 @@ using namespace de::tracker;
 std::thread m_framesThread;
 
 
-// Delay in processing OnTrack by the unit is high, so sending a full rate messages
-// is not needed especially that mavlink module has its own timing and discards messsages 
-// with small timespan.
-// The reason I dont skip the tracking process itself is to increase the probability of locking on the object.
-#define FRAMES_TO_SKIP_BETWEEN_MESSAGES 15  
-#define FRAMES_TO_SKIP_BETWEEN_TRACK_PROCESS 5  
+
 // Original rule intent: FRAMES_TO_SKIP_BETWEEN_MESSAGES > FRAMES_TO_SKIP_BETWEEN_TRACK_PROCESS
 static_assert(FRAMES_TO_SKIP_BETWEEN_MESSAGES > FRAMES_TO_SKIP_BETWEEN_TRACK_PROCESS,
               "FRAMES_TO_SKIP_BETWEEN_MESSAGES must be greater than FRAMES_TO_SKIP_BETWEEN_TRACK_PROCESS");
@@ -153,8 +148,16 @@ bool CTracker::initTargetVirtualVideoDevice(const std::string &output_video_devi
     return true;
 }
 
-bool CTracker::init(const enum ENUM_TRACKER_TYPE tracker_type, const std::string& video_path, const uint16_t camera_orientation, const bool camera_forward, const std::string& output_video_device)
+bool CTracker::init(const enum ENUM_TRACKER_TYPE tracker_type, const std::string& video_path
+    , const uint16_t camera_orientation, const bool camera_forward, const std::string& output_video_device
+    , uint16_t frames_to_skip_between_messages, uint16_t frame_to_skip_between_track_process)
 {
+
+    if (frames_to_skip_between_messages < frame_to_skip_between_track_process)
+    {
+        std::cout << _ERROR_CONSOLE_BOLD_TEXT_ << "FATAL ERROR:" << _INFO_CONSOLE_TEXT << " frames_to_skip_between_messages should be larger than frame_to_skip_between_track_process. " <<  _NORMAL_CONSOLE_TEXT_ << std::endl;
+        exit(1);
+    }
 
     m_camera_forward = camera_forward;
     m_camera_orientation = camera_orientation;
@@ -423,8 +426,7 @@ void CTracker::track2Rect(const float x, const float y, const float w, const flo
     scaled_x = std::clamp(scaled_x, 0.0f, static_cast<float>(m_image_width) - scaled_width);
     scaled_y = std::clamp(scaled_y, 0.0f, static_cast<float>(m_image_height) - scaled_height);
 
-    std::cout << "scaled_x:" << scaled_x << " scaled_y:" << scaled_y << "scaled_h:" << scaled_height << "scaled_w:" << scaled_width << std::endl;
-
+    
 #ifdef DDEBUG
     std::cout << "scaled_x,scaled_y:" << scaled_x << ":" << scaled_y << _NORMAL_CONSOLE_TEXT_ << std::endl;
 #endif
