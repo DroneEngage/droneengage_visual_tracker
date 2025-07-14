@@ -425,17 +425,17 @@ void CTracker::track2Rect(const float x, const float y, const float w, const flo
     bbox = cv::Rect(static_cast<int>(scaled_x), static_cast<int>(scaled_y), static_cast<int>(scaled_width), static_cast<int>(scaled_height)); // Cast to int for cv::Rect
 
 
-    if (m_is_tracking_active_initial)
-    {
-        if (m_islegacy)
-        {
-            m_legacy_tracker->init(frame, bbox_2d);
+    if (m_is_tracking_active_initial) {
+        if (m_islegacy) {
+            m_legacy_tracker->init(frame, bbox_2d); // Init with the first captured frame
+        } else {
+            m_tracker->init(frame, bbox); // Init with the first captured frame
         }
-        else
-        {
-            m_tracker->init(frame, bbox);
-        }
+        if (m_callback_tracker) m_callback_tracker->onTrackStatusChanged(TrackingTarget_STATUS_TRACKING_DETECTED); // Or whatever status is appropriate after init
+    } else {
+         if (m_callback_tracker) m_callback_tracker->onTrackStatusChanged(TrackingTarget_STATUS_TRACKING_STOPPED); // Not tracking from start
     }
+
     m_process = true; // Flag to control the tracking loop
 
     // Cache callback pointer to avoid redundant nullptr checks inside the loop if it's frequent
@@ -455,11 +455,11 @@ void CTracker::track2Rect(const float x, const float y, const float w, const flo
         if (frame.empty())
         {
             // If frame is empty, it means the video stream has ended or there's an issue.
-            // Consider breaking the loop instead of continuing indefinitely.
             std::cerr << _ERROR_CONSOLE_BOLD_TEXT_ << "WARNING:" << _INFO_CONSOLE_TEXT << " Captured an empty frame. Stopping tracking."
                       << _NORMAL_CONSOLE_TEXT_ << std::endl;
             m_process = false; // Stop the loop
-            continue; // Skip the rest of the current iteration
+            if (m_callback_tracker) m_callback_tracker->onTrackStatusChanged(TrackingTarget_STATUS_TRACKING_STOPPED); // Not tracking from start
+            break; // Skip the rest of the current iteration
         }
 
         // --- Tracking Logic ---
