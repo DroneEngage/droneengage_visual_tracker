@@ -20,6 +20,15 @@ using namespace de::tracker;
 std::thread m_framesThread;
 
 
+// Delay in processing OnTrack by the unit is high, so sending a full rate messages
+// is not needed especially that mavlink module has its own timing and discards messsages 
+// with small timespan.
+// The reason I dont skip the tracking process itself is to increase the probability of locking on the object.
+#define FRAMES_TO_SKIP_BETWEEN_MESSAGES 15  
+#define FRAMES_TO_SKIP_BETWEEN_TRACK_PROCESS 5  
+// Original rule intent: FRAMES_TO_SKIP_BETWEEN_MESSAGES > FRAMES_TO_SKIP_BETWEEN_TRACK_PROCESS
+static_assert(FRAMES_TO_SKIP_BETWEEN_MESSAGES > FRAMES_TO_SKIP_BETWEEN_TRACK_PROCESS,
+              "FRAMES_TO_SKIP_BETWEEN_MESSAGES must be greater than FRAMES_TO_SKIP_BETWEEN_TRACK_PROCESS");
 
 bool CTracker::initTargetVirtualVideoDevice(const std::string &output_video_device)
 {
@@ -462,6 +471,9 @@ void CTracker::track2Rect(const float x, const float y, const float w, const flo
             break; // Skip the rest of the current iteration
         }
 
+        const int skip = (message_rate % FRAMES_TO_SKIP_BETWEEN_MESSAGES) != 0 ;
+        const int track_skip = (message_rate % FRAMES_TO_SKIP_BETWEEN_TRACK_PROCESS) != 0 ;
+        
         // --- Tracking Logic ---
         if (m_is_tracking_active_initial) // Use the initial tracking state
         {
@@ -477,16 +489,22 @@ void CTracker::track2Rect(const float x, const float y, const float w, const flo
                 cv::Point(center_x, center_y + cross_arm_length),
                 cv::Scalar(0, 255, 0), 2); // Green color (BGR), thickness 2
 
-
-        
+            
             bool new_valid_track;
             if (m_islegacy)
             {
-                new_valid_track = m_legacy_tracker->update(frame, bbox_2d);
+                if (!track_skip)
+                {
+                    new_valid_track = m_legacy_tracker->update(frame, bbox_2d);
+                }
             }
             else
             {
-                new_valid_track = m_tracker->update(frame, bbox);
+                if (!track_skip)
+                {
+                    new_valid_track = m_tracker->update(frame, bbox);
+                }
+                
             }
 
             if (new_valid_track != current_valid_track_status)
@@ -499,12 +517,15 @@ void CTracker::track2Rect(const float x, const float y, const float w, const flo
             if (current_valid_track_status)
             {
                 // Tracking success: Draw the tracked object and call callback
+                
                 if (m_islegacy)
                 {
-                    if (callback_tracker && (message_rate % 100 == 0))
+                    if (callback_tracker && !skip)
+                    {
                         callback_tracker->onTrack(revScaleX(bbox_2d.x), revScaleY(bbox_2d.y),
                                                    revScaleX(bbox_2d.width), revScaleY(bbox_2d.height),
                                                    m_camera_orientation, m_camera_forward);
+                    }
                     cv::rectangle(frame, bbox_2d, cv::Scalar(0, 255, 255), 2, 1);
 #ifdef DDEBUG
                     std::cout << "Tracking_legacy at " << bbox_2d << std::endl;
@@ -512,16 +533,19 @@ void CTracker::track2Rect(const float x, const float y, const float w, const flo
                 }
                 else
                 {
-                    if (callback_tracker)
-                        callback_tracker->onTrack(revScaleX(bbox.x), revScaleY(bbox.y),
+                    if (callback_tracker && !skip)
+                    {
+                            callback_tracker->onTrack(revScaleX(bbox.x), revScaleY(bbox.y),
                                                    revScaleX(bbox.width), revScaleY(bbox.height),
                                                    m_camera_orientation, m_camera_forward);
+                    }   
+                    cv::rectangle(frame, bbox, cv::Scalar(0, 255, 255), 2, 1);
 #ifdef DDEBUG
                     std::cout << "Tracking at " << bbox.x << " revX:" << revScaleX(bbox.x) << "  --    " << bbox.y << " revY:" << revScaleY(bbox.y) << " xxx "
                               << bbox.width << "  --    " << bbox.height << std::endl; // Directly print ints
 #endif
-                    cv::rectangle(frame, bbox, cv::Scalar(0, 255, 255), 2, 1);
                 }
+                
             }
             else
             {
@@ -539,7 +563,7 @@ void CTracker::track2Rect(const float x, const float y, const float w, const flo
                     callback_tracker->onTrackStatusChanged(TrackingTarget_STATUS_TRACKING_LOST);
             }
         }
-
+        
         // --- Streaming to Virtual Video Device ---
         if (m_video_fd != -1)
         {
@@ -584,16 +608,18 @@ void CTracker::track2Rect(const float x, const float y, const float w, const flo
                         std::cout << "Elapsed: " << elapsed_time.count() << "ms, Sleeping for: " << time_to_sleep.count() << "ms" << std::endl;
             #endif
                         std::this_thread::sleep_for(time_to_sleep);
-                    }
+        }
             #ifdef DDEBUG
-                    else
-                    {
-                        std::cout << _INFO_CONSOLE_BOLD_TEXT << "Warning: Frame processing took " << _LOG_CONSOLE_BOLD_TEXT << elapsed_time.count() << "ms " << _INFO_CONSOLE_BOLD_TEXT << ", exceeding target "
-                                << _LOG_CONSOLE_BOLD_TEXT << target_frame_time_ms.count() << "ms." << _INFO_CONSOLE_BOLD_TEXT << " Cannot maintain 30 FPS." << _NORMAL_CONSOLE_TEXT_ << std::endl;
-                    }
+        else
+        {
+            std::cout << _INFO_CONSOLE_BOLD_TEXT << "Warning: Frame processing took " << _LOG_CONSOLE_BOLD_TEXT << elapsed_time.count() << "ms " << _INFO_CONSOLE_BOLD_TEXT << ", exceeding target "
+                    << _LOG_CONSOLE_BOLD_TEXT << target_frame_time_ms.count() << "ms." << _INFO_CONSOLE_BOLD_TEXT << " Cannot maintain 30 FPS." << _NORMAL_CONSOLE_TEXT_ << std::endl;
+        }
             #endif
 
-        } // End of while (m_process) loop
+        ++message_rate;
+        
+    } // End of while (m_process) loop
 
     std::cout << _LOG_CONSOLE_BOLD_TEXT << "tracking off" << _NORMAL_CONSOLE_TEXT_ << std::endl;
 }
