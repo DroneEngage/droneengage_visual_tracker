@@ -330,7 +330,7 @@ void CTracker::trackRect(const float x, const float y, const float w, const floa
 {
     m_valid_track = false;
 
-    std::cout << "X,y,r:" << std::to_string(x) << "," << std::to_string(y) << "," << std::to_string(w) << "," << std::to_string(h) << _NORMAL_CONSOLE_TEXT_ << std::endl;
+    std::cout << _INFO_CONSOLE_BOLD_TEXT << "X:" << _LOG_CONSOLE_TEXT << std::to_string(x) << _INFO_CONSOLE_BOLD_TEXT << ",Y:" << _LOG_CONSOLE_TEXT << std::to_string(y) << _INFO_CONSOLE_BOLD_TEXT << ",W:" << _LOG_CONSOLE_TEXT << std::to_string(w)  << ",H:" << _LOG_CONSOLE_TEXT << std::to_string(h) << _NORMAL_CONSOLE_TEXT_ << std::endl;
 
     if (m_video_path == std::string(""))
     {
@@ -346,7 +346,7 @@ void CTracker::track(const float x, const float y, const float radius)
 {
     m_valid_track = false;
 
-    std::cout << "X,y,r:" << std::to_string(x) << "," << std::to_string(y) << "," << std::to_string(radius) << _NORMAL_CONSOLE_TEXT_ << std::endl;
+    std::cout << _INFO_CONSOLE_BOLD_TEXT << "X:" << _LOG_CONSOLE_TEXT << std::to_string(x) << _INFO_CONSOLE_BOLD_TEXT << ",Y:" << _LOG_CONSOLE_TEXT << std::to_string(y) << _INFO_CONSOLE_BOLD_TEXT << ",R:" << _LOG_CONSOLE_TEXT << std::to_string(radius) << _NORMAL_CONSOLE_TEXT_ << std::endl;
 
     if (m_video_path == std::string(""))
     {
