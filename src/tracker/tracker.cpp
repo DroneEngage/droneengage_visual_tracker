@@ -485,33 +485,64 @@ void CTracker::track2Rect(const float x, const float y, const float w, const flo
             cv::line(frame, cv::Point(center_x, center_y - cross_arm_length), cv::Point(center_x, center_y + cross_arm_length), cv::Scalar(0, 255, 0), 2);
         }
 
-        // --- OPTIMIZATION: Use V4L2 buffer queuing instead of write() ---
+        // --- OPTIMIZATION: Use V4L2 buffer queuing instead of write() --- (NOT WORKING)
+        // if (m_virtual_device_opened)
+        // {
+        //     cv::cvtColor(frame, yuv_frame, cv::COLOR_BGR2YUV_I420);
+            
+        //     struct v4l2_buffer buf = {};
+        //     buf.type = V4L2_BUF_TYPE_VIDEO_OUTPUT;
+        //     buf.memory = V4L2_MEMORY_MMAP;
+
+        //     // Dequeue a buffer (non-blocking)
+        //     if (CVideo::xioctl(m_video_fd, VIDIOC_DQBUF, &buf) == 0)
+        //     {
+        //         // Copy frame data into the dequeued buffer
+        //         memcpy(m_buffers[buf.index].start, yuv_frame.data, m_yuv_frame_size);
+                
+        //         // Queue the buffer back to the driver
+        //         if (CVideo::xioctl(m_video_fd, VIDIOC_QBUF, &buf) < 0) {
+        //             perror("VIDIOC_QBUF");
+        //             m_process = false; // Stop on critical error
+        //         }
+        //     }
+        //     else if (errno != EAGAIN) {
+        //         perror("VIDIOC_DQBUF");
+        //         m_process = false; // Stop on critical error
+        //     }
+        //     // If errno is EAGAIN, it means the output queue is full. We simply drop the frame,
+        //     // which is the desired behavior to prevent the pipeline from blocking.
+        // }
+
         if (m_virtual_device_opened)
         {
-            cv::cvtColor(frame, yuv_frame, cv::COLOR_BGR2YUV_I420);
-            
-            struct v4l2_buffer buf = {};
-            buf.type = V4L2_BUF_TYPE_VIDEO_OUTPUT;
-            buf.memory = V4L2_MEMORY_MMAP;
-
-            // Dequeue a buffer (non-blocking)
-            if (CVideo::xioctl(m_video_fd, VIDIOC_DQBUF, &buf) == 0)
+             cv::cvtColor(frame, yuv_frame, cv::COLOR_BGR2YUV_I420);
+             // Check continuity once after conversion. Size check is critical.
+            if (yuv_frame.isContinuous() && yuv_frame.total() * yuv_frame.elemSize() == m_yuv_frame_size)
             {
-                // Copy frame data into the dequeued buffer
-                memcpy(m_buffers[buf.index].start, yuv_frame.data, m_yuv_frame_size);
-                
-                // Queue the buffer back to the driver
-                if (CVideo::xioctl(m_video_fd, VIDIOC_QBUF, &buf) < 0) {
-                    perror("VIDIOC_QBUF");
-                    m_process = false; // Stop on critical error
+                ssize_t bytes_written = write(m_video_fd, yuv_frame.data, m_yuv_frame_size);
+                if (bytes_written < 0)
+                {
+                    std::cout << "Error: Failed to write frame to " << m_output_video_path << ": " << strerror(errno) << std::endl;
+                    if (errno == EAGAIN || errno == EWOULDBLOCK)
+                    {
+                        // This warning is fine to output, but don't stop the loop.
+                        // Consider adding a counter for repeated warnings to avoid spamming console.
+                        std::cerr << "Warning: Virtual device " << m_output_video_path << " buffer full? Try reading from it." << std::endl;
+                        // No `continue` here, we still want to process the frame and display if needed.
+                        // The next write might succeed if the reader catches up.
+                    }
+                    // For other severe errors, consider setting m_process = false;
                 }
             }
-            else if (errno != EAGAIN) {
-                perror("VIDIOC_DQBUF");
-                m_process = false; // Stop on critical error
+            else
+            {
+                // This indicates a critical error in setup or understanding of m_yuv_frame_size/conversion.
+                std::cerr << "Fatal Error: YUV frame is not continuous or has unexpected size ("
+                          << yuv_frame.total() * yuv_frame.elemSize() << " vs " << m_yuv_frame_size
+                          << "). Cannot write to V4L2 device. Stopping stream." << std::endl;
+                // Consider setting m_process = false; or closing m_video_fd
             }
-            // If errno is EAGAIN, it means the output queue is full. We simply drop the frame,
-            // which is the desired behavior to prevent the pipeline from blocking.
         }
 
         auto end_time = std::chrono::high_resolution_clock::now();
