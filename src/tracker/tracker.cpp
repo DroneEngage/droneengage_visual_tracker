@@ -48,6 +48,9 @@ bool CTracker::initTargetVirtualVideoDevice(const std::string &output_video_devi
 
     // Open the virtual video device
     m_video_fd = open(m_output_video_path.c_str(), O_RDWR | O_NONBLOCK);
+
+    std::cout << _SUCCESS_CONSOLE_BOLD_TEXT_ << "Video Output:" << _LOG_CONSOLE_BOLD_TEXT << m_output_video_path << _NORMAL_CONSOLE_TEXT_ << std::endl;
+
     if (m_video_fd < 0)
     {
         std::cout << "Error: Could not open virtual video device " << m_output_video_path << ": " << strerror(errno) << std::endl;
