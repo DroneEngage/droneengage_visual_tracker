@@ -100,11 +100,6 @@ void CTrackerMain::startTrackingRect(const float x, const float y, const float w
 void CTrackerMain::pauseTracking()
 {
     m_tracker.get()->pause();
-
-    m_trackerFacade.sendTrackingTargetStatus (
-        std::string(""),
-        TrackingTarget_STATUS_TRACKING_STOPPED
-    );
 }
 
 

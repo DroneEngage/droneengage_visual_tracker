@@ -57,7 +57,7 @@ bool CTracker::initTargetVirtualVideoDevice(const std::string &output_video_devi
         return false;
     }
 
-    std::cout << _SUCCESS_CONSOLE_BOLD_TEXT_<< "Successfully opened virtual video device: " << _LOG_CONSOLE_BOLD_TEXT << m_output_video_path << std::endl;
+    std::cout << _SUCCESS_CONSOLE_BOLD_TEXT_<< "Successfully opened virtual video device: " << _LOG_CONSOLE_BOLD_TEXT << m_output_video_path << _NORMAL_CONSOLE_TEXT_ <<  std::endl;
 
     struct v4l2_format fmt = {0};
     fmt.type = V4L2_BUF_TYPE_VIDEO_OUTPUT;
@@ -70,13 +70,14 @@ bool CTracker::initTargetVirtualVideoDevice(const std::string &output_video_devi
 
     if (CVideo::xioctl(m_video_fd, VIDIOC_S_FMT, &fmt) < 0)
     {
-        fprintf(stderr, "Failed to set video format on %s: %s\n", m_output_video_path.c_str(), strerror(errno));
+        std::cerr << _ERROR_CONSOLE_BOLD_TEXT_ << "Failed to set video format on " << _INFO_CONSOLE_BOLD_TEXT << m_output_video_path << " " << strerror(errno) << _NORMAL_CONSOLE_TEXT_ << std::endl;
         close(m_video_fd);
         video_capture.release();
         return false;
     }
-    fprintf(stderr, "Successfully set format for %s: %dx%d, pixformat YUV420\n",
-            m_output_video_path.c_str(), fmt.fmt.pix.width, fmt.fmt.pix.height);
+
+    std::cout << _SUCCESS_CONSOLE_BOLD_TEXT_<< "Successfully set format for " << m_output_video_path << ":" << _INFO_CONSOLE_BOLD_TEXT << fmt.fmt.pix.width << _LOG_CONSOLE_BOLD_TEXT << "x" << _INFO_CONSOLE_BOLD_TEXT << fmt.fmt.pix.height << _LOG_CONSOLE_BOLD_TEXT << "pixformat YUV420" << _NORMAL_CONSOLE_TEXT_ <<  std::endl;
+
 
     // Request buffers for memory mapping
     struct v4l2_requestbuffers req = {0};
@@ -86,7 +87,7 @@ bool CTracker::initTargetVirtualVideoDevice(const std::string &output_video_devi
 
     if (CVideo::xioctl(m_video_fd, VIDIOC_REQBUFS, &req) < 0)
     {
-        fprintf(stderr, "Failed to request buffers on %s: %s\n", m_output_video_path.c_str(), strerror(errno));
+        std::cerr << _ERROR_CONSOLE_BOLD_TEXT_ << "Failed to request buffers on " << _INFO_CONSOLE_BOLD_TEXT << m_output_video_path << ": " << strerror(errno) << _NORMAL_CONSOLE_TEXT_ << std::endl;
         close(m_video_fd);
         video_capture.release();
         return false;
@@ -94,7 +95,7 @@ bool CTracker::initTargetVirtualVideoDevice(const std::string &output_video_devi
 
     if (req.count < 2)
     {
-        std::cout << "Insufficient buffer memory on " <<  m_output_video_path << std::endl;
+        std::cerr << _ERROR_CONSOLE_BOLD_TEXT_ << "Insufficient buffer memory on " << _INFO_CONSOLE_BOLD_TEXT << m_output_video_path << _NORMAL_CONSOLE_TEXT_ << std::endl;
         close(m_video_fd);
         video_capture.release();
         return false;
@@ -104,7 +105,7 @@ bool CTracker::initTargetVirtualVideoDevice(const std::string &output_video_devi
     m_buffers = new (std::nothrow) buffer[req.count];
     
     if (!m_buffers) {
-        std::cout << "Error: Failed to allocate memory for V4L2 buffers." << std::endl;
+        std::cerr << _ERROR_CONSOLE_BOLD_TEXT_ << "Error: Failed to allocate memory for V4L2 buffers." << _NORMAL_CONSOLE_TEXT_ << std::endl;
         close(m_video_fd);
         m_video_fd = -1;
         return false;
@@ -122,7 +123,7 @@ bool CTracker::initTargetVirtualVideoDevice(const std::string &output_video_devi
 
         if (CVideo::xioctl(m_video_fd, VIDIOC_QUERYBUF, &buf) < 0)
         {
-            fprintf(stderr, "Failed to query buffer %u on %s: %s\n", i, m_output_video_path.c_str(), strerror(errno));
+            std::cerr << _ERROR_CONSOLE_BOLD_TEXT_ << "Failed to query buffer " << i << " on " <<  _INFO_CONSOLE_BOLD_TEXT << m_output_video_path << ": " << strerror(errno) << _NORMAL_CONSOLE_TEXT_ << std::endl;
             close(m_video_fd);
             video_capture.release();
             return false;
@@ -136,7 +137,7 @@ bool CTracker::initTargetVirtualVideoDevice(const std::string &output_video_devi
 
         if (m_buffers[i].start == MAP_FAILED)
         {
-            fprintf(stderr, "Failed to map buffer %u on %s: %s\n", i, m_output_video_path.c_str(), strerror(errno));
+            std::cerr << _ERROR_CONSOLE_BOLD_TEXT_ << "Failed to query buffer " << i << " on " <<  _INFO_CONSOLE_BOLD_TEXT << m_output_video_path << ": " << strerror(errno) << _NORMAL_CONSOLE_TEXT_ << std::endl;
             close(m_video_fd);
             video_capture.release();
             return false;

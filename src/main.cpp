@@ -309,6 +309,12 @@ int main (int argc, char *argv[])
         std::cout << _INFO_CONSOLE_BOLD_TEXT << " ========================== DDEBUG ENABLED =========================="   << _NORMAL_CONSOLE_TEXT_ << std::endl;
     #endif
 	
+    // Disable synchronization between C and C++ standard streams
+    std::ios_base::sync_with_stdio(false);
+
+    // Optionally, untie cin from cout for further speedup (especially with lots of cin/cout alternating)
+    std::cin.tie(nullptr);
+
     init(argc, argv);
 
     while (!exit_me)
