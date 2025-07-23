@@ -218,17 +218,7 @@ bool CTracker::init(const enum ENUM_TRACKER_TYPE tracker_type, const std::string
     unsigned int detected_width = 0;
     unsigned int detected_height = 0;
 
-    if (!CVideo::getVideoResolution(m_video_path, detected_width, detected_height))
-    {
-        std::cout << _ERROR_CONSOLE_BOLD_TEXT_ << "FATAL ERROR:" << _BK_RED_WHITE_TEXT_ << " could not access camera at " << _ERROR_CONSOLE_TEXT_ << video_path << _NORMAL_CONSOLE_TEXT_ << std::endl;
-
-        return false;
-    }
-    
-    m_image_width = detected_width;
-    m_image_height = detected_height;
-    
-    video_capture.open(video_path);
+    video_capture.open(video_path.c_str(), cv::CAP_V4L2);
     if (!video_capture.isOpened())
     {
         // TODO: send error message to WebClient please.
@@ -237,25 +227,28 @@ bool CTracker::init(const enum ENUM_TRACKER_TYPE tracker_type, const std::string
 
         return false;
     }
+
+    // Set camera properties once after opening.
+    // Error checking for `set` calls is good practice, though not strictly required if non-critical.
+    video_capture.set(cv::CAP_PROP_FPS, 30);
+    video_capture.set(cv::CAP_PROP_FOURCC, cv::VideoWriter::fourcc('M', 'J', 'P', 'G'));
+
+    m_image_width = static_cast<int>(video_capture.get(cv::CAP_PROP_FRAME_WIDTH));
+    m_image_height = static_cast<int>(video_capture.get(cv::CAP_PROP_FRAME_HEIGHT));
+    double actual_fps = video_capture.get(cv::CAP_PROP_FPS);
     
+    if (m_image_width == 0 || m_image_height == 0) {
+        std::cerr << _ERROR_CONSOLE_BOLD_TEXT_ << "Error: Failed to get camera resolution from " << video_path << _NORMAL_CONSOLE_TEXT_ << std::endl;
+        video_capture.release();
+        return 1;
+    }
+
+    
+
     std::cout << _SUCCESS_CONSOLE_BOLD_TEXT_ << "Video Capture:" << _LOG_CONSOLE_BOLD_TEXT << video_path << _NORMAL_CONSOLE_TEXT_ << std::endl;
    
     // Read the first frame to get its actual width and height
     
-    video_capture.set(cv::CAP_PROP_POS_FRAMES, 0); // Rewind to start of video for actual tracking
-
-    video_capture.set(
-        cv::CAP_PROP_FRAME_WIDTH,
-        m_image_width);
-
-    video_capture.set(
-        cv::CAP_PROP_FRAME_HEIGHT,
-        m_image_height);
-
-    video_capture.set(
-        cv::CAP_PROP_FPS,
-        m_image_fps);
-
     video_capture.set(cv::CAP_PROP_FOURCC, cv::VideoWriter::fourcc('M', 'J', 'P', 'G'));
 
 
@@ -429,15 +422,14 @@ void CTracker::track2Rect(const float x, const float y, const float w, const flo
     {
         auto start_time = std::chrono::high_resolution_clock::now();
 
-        video_capture >> frame;
-        if (frame.empty())
+        if (!video_capture.read(frame) || frame.empty())
         {
             std::cerr << _ERROR_CONSOLE_BOLD_TEXT_ << "WARNING:" << _INFO_CONSOLE_TEXT << " Captured an empty frame. Stopping tracking."
                       << _NORMAL_CONSOLE_TEXT_ << std::endl;
             if (m_callback_tracker) m_callback_tracker->onTrackStatusChanged(TrackingTarget_STATUS_TRACKING_STOPPED);
             break;
         }
-
+        
         // --- Tracking Logic ---
         if (m_is_tracking_active_initial)// Use the initial tracking state
         {
@@ -445,6 +437,7 @@ void CTracker::track2Rect(const float x, const float y, const float w, const flo
 
             // --- REFINED: Update tracking status only when processed ---
             if (!should_skip_track_process) {
+                
                 track_success = m_islegacy ? m_legacy_tracker->update(frame, bbox_2d) : m_tracker->update(frame, bbox);
                 
                 // Report status change immediately after an update attempt
@@ -485,6 +478,8 @@ void CTracker::track2Rect(const float x, const float y, const float w, const flo
             cv::line(frame, cv::Point(center_x - cross_arm_length, center_y), cv::Point(center_x + cross_arm_length, center_y), cv::Scalar(0, 255, 0), 2);
             cv::line(frame, cv::Point(center_x, center_y - cross_arm_length), cv::Point(center_x, center_y + cross_arm_length), cv::Scalar(0, 255, 0), 2);
         }
+
+                    
 
         // --- OPTIMIZATION: Use V4L2 buffer queuing instead of write() --- (NOT WORKING)
         // if (m_virtual_device_opened)
@@ -548,13 +543,13 @@ void CTracker::track2Rect(const float x, const float y, const float w, const flo
 
         auto end_time = std::chrono::high_resolution_clock::now();
         auto elapsed_time = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time);
-
+        
         if (elapsed_time < target_frame_time_ms)
         {
             #ifdef DDEBUG
                         std::cout << "Elapsed: " << elapsed_time.count() << "ms, Sleeping for: " << time_to_sleep.count() << "ms" << std::endl;
             #endif
-            std::this_thread::sleep_for(target_frame_time_ms - elapsed_time);
+            //std::this_thread::sleep_for(target_frame_time_ms - elapsed_time);
         }
         #ifdef DDEBUG
         else
@@ -562,7 +557,15 @@ void CTracker::track2Rect(const float x, const float y, const float w, const flo
             std::cout << _INFO_CONSOLE_BOLD_TEXT << "Warning: Frame processing took " << _LOG_CONSOLE_BOLD_TEXT << elapsed_time.count() << "ms " << _INFO_CONSOLE_BOLD_TEXT << ", exceeding target "
                     << _LOG_CONSOLE_BOLD_TEXT << target_frame_time_ms.count() << "ms." << _INFO_CONSOLE_BOLD_TEXT << " Cannot maintain 30 FPS." << _NORMAL_CONSOLE_TEXT_ << std::endl;
         }
-            #endif
+        #endif
+
+        #ifdef DDEBUG
+        if (frame_counter % 10 == 0)
+        {
+            std::cout << _INFO_CONSOLE_BOLD_TEXT << "Elapsed: " << _LOG_CONSOLE_BOLD_TEXT << elapsed_time.count() << "ms" << std::endl;
+        }
+        #endif
+        
         ++frame_counter;
     }// End of while (m_process) loop
 
