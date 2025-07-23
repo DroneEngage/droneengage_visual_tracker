@@ -152,7 +152,7 @@ namespace tracker
 
             int m_image_width  = 640;
             int m_image_height = 480;
-            int m_image_fps = 5;
+            
             
             cv::VideoCapture video_capture;
             CCallBack_Tracker * m_callback_tracker;
