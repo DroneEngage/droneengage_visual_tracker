@@ -76,7 +76,7 @@ bool CTracker::initTargetVirtualVideoDevice(const std::string &output_video_devi
         return false;
     }
 
-    std::cout << _SUCCESS_CONSOLE_BOLD_TEXT_<< "Successfully set format for " << m_output_video_path << ":" << _INFO_CONSOLE_BOLD_TEXT << fmt.fmt.pix.width << _LOG_CONSOLE_BOLD_TEXT << "x" << _INFO_CONSOLE_BOLD_TEXT << fmt.fmt.pix.height << _LOG_CONSOLE_BOLD_TEXT << "pixformat YUV420" << _NORMAL_CONSOLE_TEXT_ <<  std::endl;
+    std::cout << _SUCCESS_CONSOLE_BOLD_TEXT_<< "Successfully set format for " << m_output_video_path << ":" << _INFO_CONSOLE_BOLD_TEXT << fmt.fmt.pix.width << _LOG_CONSOLE_BOLD_TEXT << "x" << _INFO_CONSOLE_BOLD_TEXT << fmt.fmt.pix.height << _LOG_CONSOLE_BOLD_TEXT << " pixformat YUV420" << _NORMAL_CONSOLE_TEXT_ <<  std::endl;
 
 
     // Request buffers for memory mapping
@@ -230,9 +230,11 @@ bool CTracker::init(const enum ENUM_TRACKER_TYPE tracker_type, const std::string
 
     // Set camera properties once after opening.
     // Error checking for `set` calls is good practice, though not strictly required if non-critical.
+    // video_capture.set(cv::CAP_PROP_FRAME_WIDTH, 800);
+    // video_capture.set(cv::CAP_PROP_FRAME_HEIGHT, 600);
     video_capture.set(cv::CAP_PROP_FPS, 30);
     video_capture.set(cv::CAP_PROP_FOURCC, cv::VideoWriter::fourcc('M', 'J', 'P', 'G'));
-
+    
     m_image_width = static_cast<int>(video_capture.get(cv::CAP_PROP_FRAME_WIDTH));
     m_image_height = static_cast<int>(video_capture.get(cv::CAP_PROP_FRAME_HEIGHT));
     double actual_fps = video_capture.get(cv::CAP_PROP_FPS);
@@ -519,7 +521,8 @@ void CTracker::track2Rect(const float x, const float y, const float w, const flo
                 ssize_t bytes_written = write(m_video_fd, yuv_frame.data, m_yuv_frame_size);
                 if (bytes_written < 0)
                 {
-                    std::cout << "Error: Failed to write frame to " << m_output_video_path << ": " << strerror(errno) << std::endl;
+                    std::cout << "Error: Failed to write frame to " << m_output_video_path << ": " << strerror(errno) << " (errno: " << errno << ")" << std::endl;
+
                     if (errno == EAGAIN || errno == EWOULDBLOCK)
                     {
                         // This warning is fine to output, but don't stop the loop.
