@@ -182,6 +182,33 @@
  * This message is mainly sent from web and received by communication module.
 */
 #define TYPE_AndruavMessage_Unit_Name                   1072
+/**
+ * @brief used to ping a unit name.
+ * This message works in two ways:
+ * * 1- send a ping to a unit to tell it that I am alive via p2p.
+ * * 2- This is similar to send RemoteExecute (TYPE_AndruavMessage_ID)
+ *      But in this case target unit does not need to reply with TYPE_AndruavMessage_ID
+ *      It can reply with same TYPE_AndruavMessage_Ping_Unit
+ *  Note that 1 & 2 can be done in a single message.
+ * 
+ * params:
+ *      [a]: sender_party_id : drone_engage party id. case: #1
+ *      [k]: 1 - request ack.                         case: #2
+ */
+#define TYPE_AndruavMessage_Ping_Unit                   1073
+
+/**
+ * @brief used to upload DroneEngage Mission File.
+ * 
+ * params:
+ *      [a]: p_textMission,
+ *      [e]: p_eraseFirst
+ */
+#define TYPE_AndruavMessage_Upload_DE_Mission           1075
+
+#define TYPE_AndruavMessage_AI_Recognition_ACTION               1076
+#define TYPE_AndruavMessage_AI_Recognition_STATUS               1077
+#define TYPE_AndruavMessage_AI_Recognition_TargetLocation       1078
 
 // Binary Messages 
 
