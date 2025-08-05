@@ -127,12 +127,12 @@ namespace tracker
              * output from 0 to 1.0
              * (0,0) top left
              */
-            float revScaleX(const float& x) const
+            inline float revScaleX(const float& x) const
             {
                 return (x / m_image_width);
             };
 
-            float revScaleY(const float& y) const
+            inline float revScaleY(const float& y) const
             {
                 return (y / m_image_height);
             };
