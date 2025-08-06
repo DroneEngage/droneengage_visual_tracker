@@ -90,6 +90,64 @@ void CTrackerAndruavMessageParser::parseMessage (Json_de &andruav_message, const
                     case TrackingTarget_ACTION_TRACKING_PAUSE:
                         m_trackerMain.pauseTracking();
                     break;
+
+                    case TrackingTarget_ACTION_TRACKING_ENABLE:
+                        m_trackerMain.enableTracking();
+                    break;
+                }
+            }
+            break;
+
+            case TYPE_AndruavMessage_AI_Recognition_STATUS:
+            {
+                if (!cmd.contains("a") || !cmd["a"].is_number_integer()) return ;
+
+                switch (cmd["a"].get<int>())
+                {
+                    case TrackingTarget_STATUS_AI_Recognition_LOST:
+                    break;
+                    case TrackingTarget_STATUS_AI_Recognition_DETECTED:
+                    break;
+                    case TrackingTarget_STATUS_AI_Recognition_ENABLED:
+                    break;
+                    case TrackingTarget_STATUS_AI_Recognition_DISABLED:
+                    break;
+                }
+            }
+            break;
+
+            case TYPE_AndruavMessage_AI_Recognition_TargetLocation:
+            {
+                
+                
+                if (cmd.contains("t") && cmd["t"].is_array())
+                {
+                    const Json_de obj = cmd["t"];
+                
+                    #ifdef DDEBUG
+                        std::cout << "ALL AI Object:" << obj.dump() << std::endl;
+                    #endif
+                }
+
+                if (cmd.contains("b") && cmd["b"].is_object())
+                {
+                    const Json_de obj = cmd["b"];
+                
+                    
+                    const float x = obj["x"].get<float>();
+                    const float y = obj["y"].get<float>();
+                    const float w = obj["w"].get<float>();
+                    const float h = obj["h"].get<float>();
+
+                    const float centerX =  -0.5 + x + w/ 2.0;
+                    const float centerY =  -0.5 + y + h/ 2.0;
+
+                    #ifdef DDEBUG
+                        std::cout << "Best AI Object:" << obj.dump() << std::endl;
+                        std::cout << "Best AI Object:" << centerX << ":" << centerY << std::endl;
+                    #endif
+
+                    m_trackerMain.onAITrackerBestRect(x, y, w, h);
                 }
             }
             break;

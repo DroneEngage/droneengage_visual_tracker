@@ -455,8 +455,8 @@ void CTracker::track2Rect(const float x, const float y, const float w, const flo
             if (track_success)
             {
                 // Draw bounding box on every frame regardless of update skip
-                if (m_islegacy) cv::rectangle(frame, bbox_2d, cv::Scalar(0, 255, 255), 2, 1);
-                else cv::rectangle(frame, bbox, cv::Scalar(0, 255, 255), 2, 1);
+                if (m_islegacy) cv::rectangle(frame, bbox_2d, cv::Scalar(0, 0, 200), 2, 1);
+                else cv::rectangle(frame, bbox, cv::Scalar(0, 0, 200), 2, 1);
                 
                 const bool should_skip_message = (frame_counter % FRAMES_TO_SKIP_BETWEEN_MESSAGES) != 0;
                 if (!should_skip_message && m_callback_tracker)

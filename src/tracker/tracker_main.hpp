@@ -62,10 +62,26 @@ namespace tracker
         
         public:
             
+            void enableTracking();
             void startTrackingRect(const float x, const float y, const float w, const float h);
             void pauseTracking();
             void stopTracking();
+
+        public:
             
+            void onAITrackerBestRect(const float x, const float y, const float w, const float h);
+            
+            
+        public:
+            inline void setAITrackerStatus(const int status)
+            {
+                m_ai_tracker_status = status;
+            }
+
+            inline int getAITrackerStatus()
+            {
+                return m_ai_tracker_status;
+            }
 
         public:
             //CCommon_Callback
@@ -77,10 +93,12 @@ namespace tracker
             void onTrackStatusChanged (const int& track) override ;
 
         private:
-            
+        
+            int m_tracker_status = TrackingTarget_STATUS_TRACKING_STOPPED;
+            int m_ai_tracker_status = TrackingTarget_STATUS_AI_Recognition_DISABLED;
             
             bool m_exit_thread;
-
+            
             std::unique_ptr<de::tracker::CTracker> m_tracker;
             de::tracker::CTracker_Facade& m_trackerFacade = de::tracker::CTracker_Facade::getInstance();
     };

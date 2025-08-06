@@ -87,13 +87,33 @@ bool CTrackerMain::uninit()
 
 void CTrackerMain::startTrackingRect(const float x, const float y, const float w, const float h)
 {
+    #ifdef DEBUG
+    std::cout << _INFO_CONSOLE_BOLD_TEXT << "rect:" << x << ":" << y << ":" << w << ":" << h << std::endl;
+    #endif
+        
+    if (m_tracker_status == TrackingTarget_STATUS_TRACKING_STOPPED) return ;
+    
     m_tracker.get()->stop();
 
     m_tracker.get()->trackRect(x,y,w,h);
 
     m_trackerFacade.sendTrackingTargetStatus (
         std::string(""),
-        TrackingTarget_STATUS_TRACKING_ENABLED
+        m_tracker_status
+    );
+}
+
+
+void CTrackerMain::enableTracking()
+{
+    // this state means I will accept start tracking point.
+    // this is not a real start for the tracker core.
+    m_tracker_status = TrackingTarget_STATUS_TRACKING_ENABLED;
+    
+    // ACK
+    m_trackerFacade.sendTrackingTargetStatus (
+        std::string(""),
+        m_tracker_status
     );
 }
 
@@ -105,17 +125,19 @@ void CTrackerMain::pauseTracking()
 
 void CTrackerMain::stopTracking()
 {
+    m_tracker_status = TrackingTarget_STATUS_TRACKING_STOPPED;
     m_tracker.get()->stop();
 
     m_trackerFacade.sendTrackingTargetStatus (
         std::string(""),
-        TrackingTarget_STATUS_TRACKING_STOPPED
+        m_tracker_status
     );
 }
 
 /**
  * Called when there is a a tracked object.
- * output from -0.5 to 0.5
+ * input x,y,w,h:[0 to 1.0]
+ * output from [-0.5 to 0.5]
  * (0,0) top left
  * center = [(x + w )/2 , (y + h)/2]
  */
@@ -152,10 +174,11 @@ void CTrackerMain::onTrack (const float& x, const float& y, const float& width, 
         break;
     }
 
+    std::cout << "Track Object:" << center_x << ":" << center_y << std::endl;
 
     // Apply precision limiting
-    delta_x = roundToPrecision(delta_x, 6);
-    delta_y = roundToPrecision(delta_y, 6);
+    delta_x = roundToPrecision(delta_x, 3);
+    delta_y = roundToPrecision(delta_y, 3);
 
 
     Json_de targets = Json_de::array();
@@ -201,6 +224,8 @@ void CTrackerMain::onTrack (const float& x, const float& y, const float& width, 
  */
 void CTrackerMain::onTrackStatusChanged (const int& status)  
 {
+    m_tracker_status = status;
+    
     m_trackerFacade.sendTrackingTargetStatus (
         std::string(""),
         status
@@ -210,3 +235,17 @@ void CTrackerMain::onTrackStatusChanged (const int& status)
     std::cout << _INFO_CONSOLE_BOLD_TEXT << "onTrackStatusChanged:" << _LOG_CONSOLE_BOLD_TEXT << std::to_string(track) << _NORMAL_CONSOLE_TEXT_ << std::endl;
     #endif
 }
+
+void CTrackerMain::onAITrackerBestRect(const float x, const float y, const float w, const float h)
+{
+    m_ai_tracker_status = TrackingTarget_STATUS_AI_Recognition_DETECTED;
+
+    std::cout << "onAITrackerBestRect:" << m_tracker_status << std::endl;
+    if ((m_tracker_status == TrackingTarget_STATUS_TRACKING_LOST)
+    || (m_tracker_status == TrackingTarget_STATUS_TRACKING_ENABLED))
+    {
+        std::cout << _INFO_CONSOLE_BOLD_TEXT << "ai_rect:" << x << ":" << y << ":" << w << ":" << h << std::endl;
+        startTrackingRect(x, y, w, h);
+    }
+}
+            
