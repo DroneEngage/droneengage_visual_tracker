@@ -21,17 +21,34 @@ bool CTrackerMain::init()
     
     if (!m_jsonConfig.contains("tracker_algorithm_index"))
     {
-        std::cout << _ERROR_CONSOLE_BOLD_TEXT_ << "FATAL ERROR: " << _INFO_CONSOLE_TEXT << CConfigFile::getInstance().getFileName() << " does not have field " << _ERROR_CONSOLE_TEXT_ "[tracker_algorithm_index]" <<  _NORMAL_CONSOLE_TEXT_ << std::endl;
+        std::cout << _ERROR_CONSOLE_BOLD_TEXT_ << "FATAL ERROR: " << _INFO_CONSOLE_TEXT << CConfigFile::getInstance().getFileName() 
+                << " does not have field " << _ERROR_CONSOLE_TEXT_ "[tracker_algorithm_index]" <<  _NORMAL_CONSOLE_TEXT_ 
+                << std::endl;
 	
         exit(1);
     }
 
     if (!m_jsonConfig.contains("source_video_device"))
     {
-        std::cout << _ERROR_CONSOLE_BOLD_TEXT_ << "FATAL ERROR: " << _INFO_CONSOLE_TEXT << CConfigFile::getInstance().getFileName() << " does not have field " << _ERROR_CONSOLE_TEXT_ "[source_video_device]" <<  _NORMAL_CONSOLE_TEXT_ << std::endl;
+        std::cout << _ERROR_CONSOLE_BOLD_TEXT_ << "FATAL ERROR: " << _INFO_CONSOLE_TEXT << CConfigFile::getInstance().getFileName() 
+                << " does not have field " << _ERROR_CONSOLE_TEXT_ "[source_video_device]" <<  _NORMAL_CONSOLE_TEXT_ 
+                << std::endl;
 	
         exit(1);
     }
+
+    
+    if (m_jsonConfig.contains("external_ai_feed_port_enable")
+        && m_jsonConfig["external_ai_feed_port_enable"].is_boolean())
+    {
+        int port = m_jsonConfig.contains("external_ai_feed_port")
+        && m_jsonConfig["external_ai_feed_port"].is_number_unsigned()?m_jsonConfig["external_ai_feed_port"].get<int>():12347;
+        
+        m_udp_ai_receiver.init(port, [this](ParsedDetection detection) {
+            this->onReceive(detection);
+        });
+    }
+    
 
     m_tracker = std::make_unique<CTracker>(CTracker(this));
     std::string output_video_device = "";
@@ -134,6 +151,13 @@ void CTrackerMain::stopTracking()
     );
 }
 
+
+void CTrackerMain::onReceive (ParsedDetection detection)
+{
+    std::cout << "detection:" << detection.name << ":" << detection.category << std::endl;
+}
+
+
 /**
  * Called when there is a a tracked object.
  * input x,y,w,h:[0 to 1.0]
@@ -171,6 +195,8 @@ void CTrackerMain::onTrack (const float& x, const float& y, const float& width, 
         break;
     
     default:
+        std::cerr << _ERROR_CONSOLE_BOLD_TEXT_ << "Invalid camera orientation: " 
+                  << camera_orientation << _NORMAL_CONSOLE_TEXT_ << std::endl;
         break;
     }
 
@@ -231,6 +257,16 @@ void CTrackerMain::onTrackStatusChanged (const int& status)
         status
     );
     
+    if (((m_tracker_status == TrackingTarget_STATUS_TRACKING_LOST)
+        || (m_tracker_status == TrackingTarget_STATUS_TRACKING_ENABLED))
+    && (m_ai_tracker_status != TrackingTarget_ACTION_AI_Recognition_ENABLE)
+        )
+        {
+            // NO AI to Help
+            // Brake Mode
+            std::cout << _ERROR_CONSOLE_BOLD_TEXT_ << "CANNOT CONTINUE TRACKING..." << _NORMAL_CONSOLE_TEXT_ << std::endl;
+        }
+
     #ifdef DDEBUG
     std::cout << _INFO_CONSOLE_BOLD_TEXT << "onTrackStatusChanged:" << _LOG_CONSOLE_BOLD_TEXT << std::to_string(track) << _NORMAL_CONSOLE_TEXT_ << std::endl;
     #endif

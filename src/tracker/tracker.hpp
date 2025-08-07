@@ -31,8 +31,8 @@
 // is not needed especially that mavlink module has its own timing and discards messsages 
 // with small timespan.
 // The reason I dont skip the tracking process itself is to increase the probability of locking on the object.
-#define FRAMES_TO_SKIP_BETWEEN_MESSAGES 15  
-#define FRAMES_TO_SKIP_BETWEEN_TRACK_PROCESS 5 
+constexpr uint16_t FRAMES_TO_SKIP_BETWEEN_MESSAGES = 15;
+constexpr uint16_t FRAMES_TO_SKIP_BETWEEN_TRACK_PROCESS = 5;
 
 typedef struct buffer {
     void* start;

@@ -3,8 +3,12 @@
 
 #include "../de_common/de_module.hpp"
 #include "../de_common/de_common_callback.hpp"
+
 #include "tracker.hpp"
+#include "udp_de_object_detection_tracking.hpp"
 #include "tracker_facade.hpp"
+
+
 
 #include "../helpers/json_nlohmann.hpp"
 using Json_de = nlohmann::json;
@@ -92,6 +96,9 @@ namespace tracker
             void onTrack (const float& x, const float& y, const float& width, const float& height, const uint16_t camera_orientation, const bool camera_forward) override ;
             void onTrackStatusChanged (const int& track) override ;
 
+        protected:
+            void onReceive (ParsedDetection detection);
+
         private:
         
             int m_tracker_status = TrackingTarget_STATUS_TRACKING_STOPPED;
@@ -101,6 +108,7 @@ namespace tracker
             
             std::unique_ptr<de::tracker::CTracker> m_tracker;
             de::tracker::CTracker_Facade& m_trackerFacade = de::tracker::CTracker_Facade::getInstance();
+            de::tracker::CUDP_AI_Receiver& m_udp_ai_receiver = de::tracker::CUDP_AI_Receiver::getInstance();
     };
 
 };

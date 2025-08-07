@@ -101,8 +101,11 @@ void CTrackerAndruavMessageParser::parseMessage (Json_de &andruav_message, const
             case TYPE_AndruavMessage_AI_Recognition_STATUS:
             {
                 if (!cmd.contains("a") || !cmd["a"].is_number_integer()) return ;
+                const int status = cmd["a"].get<int>();
 
-                switch (cmd["a"].get<int>())
+                m_trackerMain.setAITrackerStatus(status);
+
+                switch (status)
                 {
                     case TrackingTarget_STATUS_AI_Recognition_LOST:
                     break;
