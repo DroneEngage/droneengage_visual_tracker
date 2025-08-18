@@ -38,18 +38,6 @@ bool CTrackerMain::init()
     }
 
     
-    if (m_jsonConfig.contains("external_ai_feed_port_enable")
-        && m_jsonConfig["external_ai_feed_port_enable"].is_boolean())
-    {
-        int port = m_jsonConfig.contains("external_ai_feed_port")
-        && m_jsonConfig["external_ai_feed_port"].is_number_unsigned()?m_jsonConfig["external_ai_feed_port"].get<int>():12347;
-        
-        m_udp_ai_receiver.init(port, [this](ParsedDetection detection) {
-            this->onReceive(detection);
-        });
-    }
-    
-
     m_tracker = std::make_unique<CTracker>(CTracker(this));
     std::string output_video_device = "";
     if (m_jsonConfig.contains("output_video_device"))
@@ -151,11 +139,6 @@ void CTrackerMain::stopTracking()
     );
 }
 
-
-void CTrackerMain::onReceive (ParsedDetection detection)
-{
-    std::cout << "detection:" << detection.name << ":" << detection.category << std::endl;
-}
 
 
 /**

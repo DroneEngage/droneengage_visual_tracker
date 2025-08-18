@@ -6,6 +6,7 @@
 #include <opencv2/core/ocl.hpp>
 
 #include "../helpers/colors.hpp"
+#include "../helpers/helpers.hpp"
 #include "video.hpp"
 #include "tracker.hpp"
 
