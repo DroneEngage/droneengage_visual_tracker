@@ -18,7 +18,7 @@ void CTracker_Facade::sendTrackingTargetsLocation( const std::string& target_par
         {"t", targets_location}
     };
 
-    #ifdef DEBUG
+    #ifdef DDEBUG
         std::cout << "tracking:" << targets_location.dump() << std::endl;
     #endif
     #ifdef DEBUG
@@ -29,17 +29,16 @@ void CTracker_Facade::sendTrackingTargetsLocation( const std::string& target_par
 }
 
 
-void CTracker_Facade::sendTrackingTargetStatus(const std::string& target_party_id, const bool enabled) const
+void CTracker_Facade::sendTrackingTargetStatus(const std::string& target_party_id, const int status) const
 {
-    int status = TrackingTarget_STATUS_TRACKING_LOST;
-    if (enabled)
-    {
-        status  = TrackingTarget_STATUS_TRACKING_DETECTED;
-    }
     Json_de message =
     {
         {"a", status}
     };
 
     m_module.sendJMSG(target_party_id, message, TYPE_AndruavMessage_TargetTracking_STATUS, true);
+
+    #ifdef DEBUG
+        std::cout << "TrackingStatus:" << status << std::endl;
+    #endif
 }

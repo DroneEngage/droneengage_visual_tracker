@@ -31,12 +31,6 @@ namespace tracker
             void operator=(CTracker_Facade const&)          = delete;
 
         
-            // Note: Scott Meyers mentions in his Effective Modern
-            //       C++ book, that deleted functions should generally
-            //       be public as it results in better error messages
-            //       due to the compilers behavior to check accessibility
-            //       before deleted status
-
         private:
 
             CTracker_Facade()
@@ -54,7 +48,7 @@ namespace tracker
         public:
            
             void sendTrackingTargetsLocation(const std::string& target_party_id, const Json_de targets_location) const;
-            void sendTrackingTargetStatus(const std::string& target_party_id, const bool enabled) const;
+            void sendTrackingTargetStatus(const std::string& target_party_id, const int status) const;
         protected:
 
             

@@ -2,6 +2,7 @@
 .vscode/
 build/
 bin/
+bin-rpi64/
 d
 de_tracker.config.local
 de_tracker.local

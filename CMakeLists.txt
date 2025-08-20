@@ -28,7 +28,7 @@ message( FATAL_ERROR “In-source builds not allowed! Create a build directory a
 exit(1)
 endif()
 
-SET (__APP__VERSION__ "1.0.0")
+SET (__APP__VERSION__ "1.1.0")
 add_definitions( -D__APP__VERSION__="${__APP__VERSION__}")
 project(DE_TRACKER VERSION ${__APP__VERSION__})
 
@@ -99,11 +99,11 @@ file(GLOB folder_helpers "./src/helpers/*.cpp")
 set(files ${folder_src} ${folder_common} ${folder_tracker} ${folder_helpers})
 
 # Add the executable target and link its libraries
-add_executable(de_tracker ${files})
-target_link_libraries(de_tracker Threads::Threads ${OpenCV_LIBS})
+add_executable(OUTPUT_BINARY ${files})
+target_link_libraries(OUTPUT_BINARY Threads::Threads ${OpenCV_LIBS})
 
 # Conditionally define DDEBUG based on the DDEBUG option
-target_compile_definitions(de_tracker PRIVATE
+target_compile_definitions(OUTPUT_BINARY PRIVATE
     $<$<BOOL:${DDEBUG}>:DDEBUG>
 )
 
@@ -113,6 +113,12 @@ SET(EXECUTABLE_OUTPUT_PATH ${OUTPUT_DIRECTORY})
 
 
 configure_file(de_tracker.config.module.json ${OUTPUT_DIRECTORY}/de_tracker.config.module.json COPYONLY)
+
+set_target_properties( OUTPUT_BINARY 
+                PROPERTIES 
+                    OUTPUT_NAME "de_tracker"
+                    SUFFIX ".so"
+                )
 
 # Highlight if DDEBUG or TEST_MODE_NO_HAILO_LINK are enabled
 if (DDEBUG)

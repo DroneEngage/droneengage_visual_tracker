@@ -20,7 +20,9 @@
 
 #define MESSAGE_FILTER {TYPE_AndruavMessage_TrackingTarget_ACTION,\
                         TYPE_AndruavMessage_TrackingTargetLocation,\
-                        TYPE_AndruavMessage_TargetTracking_STATUS}
+                        TYPE_AndruavMessage_TargetTracking_STATUS,\
+                        TYPE_AndruavMessage_AI_Recognition_STATUS,\
+                        TYPE_AndruavMessage_AI_Recognition_TargetLocation}
 
 // This is a timestamp used as instance unique number. if changed then communicator module knows module has restarted.
 std::time_t instance_time_stamp;
@@ -210,7 +212,7 @@ void initDEModule(int argc, char *argv[])
         Json_de::array(MESSAGE_FILTER)
     );
 
-    cModule.addModuleFeatures(MODULE_FEATURE_GPIO);
+    cModule.addModuleFeatures(MODULE_FEATURE_TRACKING);
     cModule.setHardware(hardware_serial, ENUM_HARDWARE_TYPE::HARDWARE_TYPE_CPU);
     cModule.setMessageOnReceive (&onReceive);
 
@@ -309,6 +311,12 @@ int main (int argc, char *argv[])
         std::cout << _INFO_CONSOLE_BOLD_TEXT << " ========================== DDEBUG ENABLED =========================="   << _NORMAL_CONSOLE_TEXT_ << std::endl;
     #endif
 	
+    // Disable synchronization between C and C++ standard streams
+    std::ios_base::sync_with_stdio(false);
+
+    // Optionally, untie cin from cout for further speedup (especially with lots of cin/cout alternating)
+    std::cin.tie(nullptr);
+
     init(argc, argv);
 
     while (!exit_me)

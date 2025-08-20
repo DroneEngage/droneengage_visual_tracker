@@ -6,6 +6,7 @@
 #include <opencv2/core/ocl.hpp>
 
 #include "../helpers/colors.hpp"
+#include "../helpers/helpers.hpp"
 #include "video.hpp"
 #include "tracker.hpp"
 
@@ -14,12 +15,16 @@
 #include <unistd.h>
 #include <sys/ioctl.h>
 #include <linux/videodev2.h>
-
+#include "../de_common/messages.hpp"
 using namespace de::tracker;
 
 std::thread m_framesThread;
 
 
+
+// Original rule intent: FRAMES_TO_SKIP_BETWEEN_MESSAGES > FRAMES_TO_SKIP_BETWEEN_TRACK_PROCESS
+static_assert(FRAMES_TO_SKIP_BETWEEN_MESSAGES > FRAMES_TO_SKIP_BETWEEN_TRACK_PROCESS,
+              "FRAMES_TO_SKIP_BETWEEN_MESSAGES must be greater than FRAMES_TO_SKIP_BETWEEN_TRACK_PROCESS");
 
 bool CTracker::initTargetVirtualVideoDevice(const std::string &output_video_device)
 {
@@ -44,13 +49,16 @@ bool CTracker::initTargetVirtualVideoDevice(const std::string &output_video_devi
 
     // Open the virtual video device
     m_video_fd = open(m_output_video_path.c_str(), O_RDWR | O_NONBLOCK);
+
+    std::cout << _SUCCESS_CONSOLE_BOLD_TEXT_ << "Video Output:" << _LOG_CONSOLE_BOLD_TEXT << m_output_video_path << _NORMAL_CONSOLE_TEXT_ << std::endl;
+
     if (m_video_fd < 0)
     {
         std::cout << "Error: Could not open virtual video device " << m_output_video_path << ": " << strerror(errno) << std::endl;
         return false;
     }
 
-    std::cout << "Successfully opened virtual video device: " << m_output_video_path << std::endl;
+    std::cout << _SUCCESS_CONSOLE_BOLD_TEXT_<< "Successfully opened virtual video device: " << _LOG_CONSOLE_BOLD_TEXT << m_output_video_path << _NORMAL_CONSOLE_TEXT_ <<  std::endl;
 
     struct v4l2_format fmt = {0};
     fmt.type = V4L2_BUF_TYPE_VIDEO_OUTPUT;
@@ -63,13 +71,14 @@ bool CTracker::initTargetVirtualVideoDevice(const std::string &output_video_devi
 
     if (CVideo::xioctl(m_video_fd, VIDIOC_S_FMT, &fmt) < 0)
     {
-        fprintf(stderr, "Failed to set video format on %s: %s\n", m_output_video_path.c_str(), strerror(errno));
+        std::cerr << _ERROR_CONSOLE_BOLD_TEXT_ << "Failed to set video format on " << _INFO_CONSOLE_BOLD_TEXT << m_output_video_path << " " << strerror(errno) << _NORMAL_CONSOLE_TEXT_ << std::endl;
         close(m_video_fd);
         video_capture.release();
         return false;
     }
-    fprintf(stderr, "Successfully set format for %s: %dx%d, pixformat YUV420\n",
-            m_output_video_path.c_str(), fmt.fmt.pix.width, fmt.fmt.pix.height);
+
+    std::cout << _SUCCESS_CONSOLE_BOLD_TEXT_<< "Successfully set format for " << m_output_video_path << ":" << _INFO_CONSOLE_BOLD_TEXT << fmt.fmt.pix.width << _LOG_CONSOLE_BOLD_TEXT << "x" << _INFO_CONSOLE_BOLD_TEXT << fmt.fmt.pix.height << _LOG_CONSOLE_BOLD_TEXT << " pixformat YUV420" << _NORMAL_CONSOLE_TEXT_ <<  std::endl;
+
 
     // Request buffers for memory mapping
     struct v4l2_requestbuffers req = {0};
@@ -79,7 +88,7 @@ bool CTracker::initTargetVirtualVideoDevice(const std::string &output_video_devi
 
     if (CVideo::xioctl(m_video_fd, VIDIOC_REQBUFS, &req) < 0)
     {
-        fprintf(stderr, "Failed to request buffers on %s: %s\n", m_output_video_path.c_str(), strerror(errno));
+        std::cerr << _ERROR_CONSOLE_BOLD_TEXT_ << "Failed to request buffers on " << _INFO_CONSOLE_BOLD_TEXT << m_output_video_path << ": " << strerror(errno) << _NORMAL_CONSOLE_TEXT_ << std::endl;
         close(m_video_fd);
         video_capture.release();
         return false;
@@ -87,7 +96,7 @@ bool CTracker::initTargetVirtualVideoDevice(const std::string &output_video_devi
 
     if (req.count < 2)
     {
-        std::cout << "Insufficient buffer memory on " <<  m_output_video_path << std::endl;
+        std::cerr << _ERROR_CONSOLE_BOLD_TEXT_ << "Insufficient buffer memory on " << _INFO_CONSOLE_BOLD_TEXT << m_output_video_path << _NORMAL_CONSOLE_TEXT_ << std::endl;
         close(m_video_fd);
         video_capture.release();
         return false;
@@ -97,7 +106,7 @@ bool CTracker::initTargetVirtualVideoDevice(const std::string &output_video_devi
     m_buffers = new (std::nothrow) buffer[req.count];
     
     if (!m_buffers) {
-        std::cout << "Error: Failed to allocate memory for V4L2 buffers." << std::endl;
+        std::cerr << _ERROR_CONSOLE_BOLD_TEXT_ << "Error: Failed to allocate memory for V4L2 buffers." << _NORMAL_CONSOLE_TEXT_ << std::endl;
         close(m_video_fd);
         m_video_fd = -1;
         return false;
@@ -115,7 +124,7 @@ bool CTracker::initTargetVirtualVideoDevice(const std::string &output_video_devi
 
         if (CVideo::xioctl(m_video_fd, VIDIOC_QUERYBUF, &buf) < 0)
         {
-            fprintf(stderr, "Failed to query buffer %u on %s: %s\n", i, m_output_video_path.c_str(), strerror(errno));
+            std::cerr << _ERROR_CONSOLE_BOLD_TEXT_ << "Failed to query buffer " << i << " on " <<  _INFO_CONSOLE_BOLD_TEXT << m_output_video_path << ": " << strerror(errno) << _NORMAL_CONSOLE_TEXT_ << std::endl;
             close(m_video_fd);
             video_capture.release();
             return false;
@@ -129,7 +138,7 @@ bool CTracker::initTargetVirtualVideoDevice(const std::string &output_video_devi
 
         if (m_buffers[i].start == MAP_FAILED)
         {
-            fprintf(stderr, "Failed to map buffer %u on %s: %s\n", i, m_output_video_path.c_str(), strerror(errno));
+            std::cerr << _ERROR_CONSOLE_BOLD_TEXT_ << "Failed to query buffer " << i << " on " <<  _INFO_CONSOLE_BOLD_TEXT << m_output_video_path << ": " << strerror(errno) << _NORMAL_CONSOLE_TEXT_ << std::endl;
             close(m_video_fd);
             video_capture.release();
             return false;
@@ -144,8 +153,19 @@ bool CTracker::initTargetVirtualVideoDevice(const std::string &output_video_devi
     return true;
 }
 
-bool CTracker::init(const enum ENUM_TRACKER_TYPE tracker_type, const std::string& video_path, const uint16_t camera_orientation, const bool camera_forward, const std::string& output_video_device)
+bool CTracker::init(const enum ENUM_TRACKER_TYPE tracker_type, const std::string& video_path
+    , const uint16_t camera_orientation, const bool camera_forward, const std::string& output_video_device
+    , uint16_t frames_to_skip_between_messages, uint16_t frame_to_skip_between_track_process)
 {
+
+    // Enable OpenCV OpenCL acceleration if available for operations like cvtColor
+    cv::ocl::setUseOpenCL(true);
+
+    if (frames_to_skip_between_messages < frame_to_skip_between_track_process)
+    {
+        std::cout << _ERROR_CONSOLE_BOLD_TEXT_ << "FATAL ERROR:" << _INFO_CONSOLE_TEXT << " frames_to_skip_between_messages should be larger than frame_to_skip_between_track_process. " <<  _NORMAL_CONSOLE_TEXT_ << std::endl;
+        exit(1);
+    }
 
     m_camera_forward = camera_forward;
     m_camera_orientation = camera_orientation;
@@ -199,17 +219,7 @@ bool CTracker::init(const enum ENUM_TRACKER_TYPE tracker_type, const std::string
     unsigned int detected_width = 0;
     unsigned int detected_height = 0;
 
-    if (!CVideo::getVideoResolution(m_video_path, detected_width, detected_height))
-    {
-        std::cout << _ERROR_CONSOLE_BOLD_TEXT_ << "FATAL ERROR:" << _BK_RED_WHITE_TEXT_ << " could not access camera at " << _ERROR_CONSOLE_TEXT_ << video_path << _NORMAL_CONSOLE_TEXT_ << std::endl;
-
-        return false;
-    }
-    
-    m_image_width = detected_width;
-    m_image_height = detected_height;
-    
-    video_capture.open(video_path);
+    video_capture.open(video_path.c_str(), cv::CAP_V4L2);
     if (!video_capture.isOpened())
     {
         // TODO: send error message to WebClient please.
@@ -218,27 +228,31 @@ bool CTracker::init(const enum ENUM_TRACKER_TYPE tracker_type, const std::string
 
         return false;
     }
-    else
-    {
-        std::cout << _SUCCESS_CONSOLE_BOLD_TEXT_ << "Video Capture:" << _INFO_CONSOLE_TEXT << video_path << _NORMAL_CONSOLE_TEXT_ << std::endl;
+
+    // Set camera properties once after opening.
+    // Error checking for `set` calls is good practice, though not strictly required if non-critical.
+    // video_capture.set(cv::CAP_PROP_FRAME_WIDTH, 800);
+    // video_capture.set(cv::CAP_PROP_FRAME_HEIGHT, 600);
+    video_capture.set(cv::CAP_PROP_FPS, 30);
+    video_capture.set(cv::CAP_PROP_FOURCC, cv::VideoWriter::fourcc('M', 'J', 'P', 'G'));
+    
+    m_image_width = static_cast<int>(video_capture.get(cv::CAP_PROP_FRAME_WIDTH));
+    m_image_height = static_cast<int>(video_capture.get(cv::CAP_PROP_FRAME_HEIGHT));
+    double actual_fps = video_capture.get(cv::CAP_PROP_FPS);
+    
+    if (m_image_width == 0 || m_image_height == 0) {
+        std::cerr << _ERROR_CONSOLE_BOLD_TEXT_ << "Error: Failed to get camera resolution from " << video_path << _NORMAL_CONSOLE_TEXT_ << std::endl;
+        video_capture.release();
+        return 1;
     }
 
+    
+    std::cout << _SUCCESS_CONSOLE_BOLD_TEXT_ << "-------------------------------------------" << _NORMAL_CONSOLE_TEXT_ << std::endl;
+
+    std::cout << _SUCCESS_CONSOLE_BOLD_TEXT_ << "Video Capture:" << _LOG_CONSOLE_BOLD_TEXT << video_path << _NORMAL_CONSOLE_TEXT_ << std::endl;
+   
     // Read the first frame to get its actual width and height
     
-    video_capture.set(cv::CAP_PROP_POS_FRAMES, 0); // Rewind to start of video for actual tracking
-
-    video_capture.set(
-        cv::CAP_PROP_FRAME_WIDTH,
-        m_image_width);
-
-    video_capture.set(
-        cv::CAP_PROP_FRAME_HEIGHT,
-        m_image_height);
-
-    video_capture.set(
-        cv::CAP_PROP_FPS,
-        m_image_fps);
-
     video_capture.set(cv::CAP_PROP_FOURCC, cv::VideoWriter::fourcc('M', 'J', 'P', 'G'));
 
 
@@ -289,6 +303,17 @@ bool CTracker::uninit()
     return true;
 }
 
+
+void CTracker::pause()
+{
+    m_is_tracking_active_initial = false;
+
+    if (m_callback_tracker != nullptr)
+    {
+        m_callback_tracker->onTrackStatusChanged(TrackingTarget_STATUS_TRACKING_STOPPED);
+    }
+}
+
 void CTracker::stop()
 {
     if (!m_process) return ; 
@@ -296,7 +321,7 @@ void CTracker::stop()
     m_valid_track = false;
     if (m_callback_tracker != nullptr)
     {
-        m_callback_tracker->onTrackStatusChanged(false);
+        m_callback_tracker->onTrackStatusChanged(TrackingTarget_STATUS_TRACKING_STOPPED);
     }
 
     if (m_framesThread.joinable())
@@ -307,7 +332,7 @@ void CTracker::trackRect(const float x, const float y, const float w, const floa
 {
     m_valid_track = false;
 
-    std::cout << "X,y,r:" << std::to_string(x) << "," << std::to_string(y) << "," << std::to_string(w) << "," << std::to_string(h) << _NORMAL_CONSOLE_TEXT_ << std::endl;
+    std::cout << _INFO_CONSOLE_BOLD_TEXT << "X:" << _LOG_CONSOLE_TEXT << std::to_string(x) << _INFO_CONSOLE_BOLD_TEXT << ",Y:" << _LOG_CONSOLE_TEXT << std::to_string(y) << _INFO_CONSOLE_BOLD_TEXT << ",W:" << _LOG_CONSOLE_TEXT << std::to_string(w)  << ",H:" << _LOG_CONSOLE_TEXT << std::to_string(h) << _NORMAL_CONSOLE_TEXT_ << std::endl;
 
     if (m_video_path == std::string(""))
     {
@@ -323,7 +348,7 @@ void CTracker::track(const float x, const float y, const float radius)
 {
     m_valid_track = false;
 
-    std::cout << "X,y,r:" << std::to_string(x) << "," << std::to_string(y) << "," << std::to_string(radius) << _NORMAL_CONSOLE_TEXT_ << std::endl;
+    std::cout << _INFO_CONSOLE_BOLD_TEXT << "X:" << _LOG_CONSOLE_TEXT << std::to_string(x) << _INFO_CONSOLE_BOLD_TEXT << ",Y:" << _LOG_CONSOLE_TEXT << std::to_string(y) << _INFO_CONSOLE_BOLD_TEXT << ",R:" << _LOG_CONSOLE_TEXT << std::to_string(radius) << _NORMAL_CONSOLE_TEXT_ << std::endl;
 
     if (m_video_path == std::string(""))
     {
@@ -342,27 +367,16 @@ void CTracker::track2Rect(const float x, const float y, const float w, const flo
     // 'frame' will store the captured video frame (BGR)
     // 'yuv_frame' will store the converted YUV frame for streaming
     cv::Mat frame;
-    cv::Mat yuv_frame; // Declare outside the loop
-
-    // Only declare these if they are truly needed within the loop or outside.
-    // If bbox_2d and bbox are only used for initialization and passed by reference
-    // to update, their creation here is fine.
-    cv::Rect2d bbox_2d;
-    cv::Rect bbox;
-
+    cv::Mat yuv_frame;
 
     // --- Frame Rate Control Variables ---
-    const std::chrono::milliseconds target_frame_time_ms(1000 / m_target_fps); 
-    
+    const std::chrono::milliseconds target_frame_time_ms(1000 / m_target_fps);
 
     // --- Initial Setup and Validation ---
     if (!video_capture.isOpened())
     {
-        // TODO: send error message to WebClient please.
         std::cerr << _ERROR_CONSOLE_BOLD_TEXT_ << "FATAL ERROR:" << _INFO_CONSOLE_TEXT << " could not open camera at "
                   << _ERROR_CONSOLE_TEXT_ << m_video_path << _NORMAL_CONSOLE_TEXT_ << std::endl;
-        // Consider a callback for fatal errors if a WebClient is truly involved
-        // if (m_callback_tracker) m_callback_tracker->onFatalError("Could not open camera");
         return;
     }
 
@@ -375,151 +389,145 @@ void CTracker::track2Rect(const float x, const float y, const float w, const flo
         return;
     }
 
-    m_image_width = frame.cols;
-    m_image_height = frame.rows;
+    const int center_x = frame.cols / 2;
+    const int center_y = frame.rows / 2;
+    // Define the length of the cross arms (you can adjust this)
+    const int cross_arm_length = 30; // pixels
 
-#ifdef DDEBUG
-    std::cout << _LOG_CONSOLE_BOLD_TEXT << "frame: " << _INFO_CONSOLE_TEXT << m_image_width << "x" << m_image_height << _NORMAL_CONSOLE_TEXT_ << std::endl;
-#endif
-
-    // Define initial bounding box - calculations only needed once
-    float scaled_x = x * m_image_width;
-    float scaled_y = y * m_image_height;
     float scaled_width = w * m_image_width;
     float scaled_height = h * m_image_height;
-    // Simplify boolean check
-    const bool is_tracking_active_initial = (x > 0);
-
     // Clamp coordinates within frame boundaries using std::clamp for conciseness and safety
     // Assuming radius is the side length, so bbox_x + radius should be <= width
-    scaled_x = std::clamp(scaled_x, 0.0f, static_cast<float>(m_image_width) - scaled_width);
-    scaled_y = std::clamp(scaled_y, 0.0f, static_cast<float>(m_image_height) - scaled_height);
+    float scaled_x = std::clamp(x * m_image_width, 0.0f, m_image_width - scaled_width);
+    float scaled_y = std::clamp(y * m_image_height, 0.0f, m_image_height - scaled_height);
 
-    std::cout << "scaled_x:" << scaled_x << " scaled_y:" << scaled_y << "scaled_h:" << scaled_height << "scaled_w:" << scaled_width << std::endl;
+    cv::Rect2d bbox_2d(scaled_x, scaled_y, scaled_width, scaled_height);
+    cv::Rect bbox(bbox_2d);
 
-#ifdef DDEBUG
-    std::cout << "scaled_x,scaled_y:" << scaled_x << ":" << scaled_y << _NORMAL_CONSOLE_TEXT_ << std::endl;
-#endif
-
-    // Initialize bounding boxes for the tracker
-    bbox_2d = cv::Rect2d(scaled_x, scaled_y, scaled_width, scaled_height);
-    bbox = cv::Rect(static_cast<int>(scaled_x), static_cast<int>(scaled_y), static_cast<int>(scaled_width), static_cast<int>(scaled_height)); // Cast to int for cv::Rect
-
-
-    if (is_tracking_active_initial)
-    {
-        if (m_islegacy)
-        {
-            m_legacy_tracker->init(frame, bbox_2d);
-        }
-        else
-        {
-            m_tracker->init(frame, bbox);
-        }
+    m_is_tracking_active_initial = (x > 0);
+    if (m_is_tracking_active_initial) {
+        // Re-initialize tracker with the new bounding box on the first frame
+        if (m_islegacy) m_legacy_tracker->init(frame, bbox_2d);
+        else m_tracker->init(frame, bbox);
+        
+        if (m_callback_tracker) m_callback_tracker->onTrackStatusChanged(TrackingTarget_STATUS_TRACKING_DETECTED);
+    } else {
+        if (m_callback_tracker) m_callback_tracker->onTrackStatusChanged(TrackingTarget_STATUS_TRACKING_STOPPED);
     }
-    m_process = true; // Flag to control the tracking loop
 
-    // Cache callback pointer to avoid redundant nullptr checks inside the loop if it's frequent
-    // Note: This assumes m_callback_tracker doesn't change during the loop.
-    auto *callback_tracker = m_callback_tracker;
+    m_process = true;
+    bool track_success = m_is_tracking_active_initial;
+    uint64_t frame_counter = 0;
+
     bool current_valid_track_status = false; // Initialize to false, assuming no track initially
-
-
+    
     // --- Main Tracking and Streaming Loop ---
     while (m_process)
     {
-        // Start measuring time for the current frame
         auto start_time = std::chrono::high_resolution_clock::now();
 
-        // Capture a new frame
-        video_capture >> frame;
-        if (frame.empty())
+        if (!video_capture.read(frame) || frame.empty())
         {
-            // If frame is empty, it means the video stream has ended or there's an issue.
-            // Consider breaking the loop instead of continuing indefinitely.
             std::cerr << _ERROR_CONSOLE_BOLD_TEXT_ << "WARNING:" << _INFO_CONSOLE_TEXT << " Captured an empty frame. Stopping tracking."
                       << _NORMAL_CONSOLE_TEXT_ << std::endl;
-            m_process = false; // Stop the loop
-            continue; // Skip the rest of the current iteration
+            if (m_callback_tracker) m_callback_tracker->onTrackStatusChanged(TrackingTarget_STATUS_TRACKING_STOPPED);
+
+            std::this_thread::sleep_for(std::chrono::milliseconds(200));
+
+            continue;
         }
-
+        
         // --- Tracking Logic ---
-        if (is_tracking_active_initial) // Use the initial tracking state
+        if (m_is_tracking_active_initial)// Use the initial tracking state
         {
-            bool new_valid_track;
-            if (m_islegacy)
-            {
-                new_valid_track = m_legacy_tracker->update(frame, bbox_2d);
-            }
-            else
-            {
-                new_valid_track = m_tracker->update(frame, bbox);
+            const bool should_skip_track_process = (frame_counter % FRAMES_TO_SKIP_BETWEEN_TRACK_PROCESS) != 0;
+
+            // --- REFINED: Update tracking status only when processed ---
+            if (!should_skip_track_process) {
+                
+                track_success = m_islegacy ? m_legacy_tracker->update(frame, bbox_2d) : m_tracker->update(frame, bbox);
+                
+                // Report status change immediately after an update attempt
+                if (m_callback_tracker) {
+                    if (track_success != current_valid_track_status)
+                    {  
+                        current_valid_track_status = track_success;
+                        m_callback_tracker->onTrackStatusChanged(track_success ? TrackingTarget_STATUS_TRACKING_DETECTED : TrackingTarget_STATUS_TRACKING_LOST);
+                    }
+                }
             }
 
-            if (new_valid_track != current_valid_track_status)
+            if (track_success)
             {
-                current_valid_track_status = new_valid_track; // Update internal state
-                if (callback_tracker) // Use cached pointer
-                    callback_tracker->onTrackStatusChanged(current_valid_track_status);
-            }
-
-            if (current_valid_track_status)
-            {
-                // Tracking success: Draw the tracked object and call callback
-                if (m_islegacy)
+                // Draw bounding box on every frame regardless of update skip
+                if (m_islegacy) cv::rectangle(frame, bbox_2d, cv::Scalar(0, 0, 200), 2, 1);
+                else cv::rectangle(frame, bbox, cv::Scalar(0, 0, 200), 2, 1);
+                
+                const bool should_skip_message = (frame_counter % FRAMES_TO_SKIP_BETWEEN_MESSAGES) != 0;
+                if (!should_skip_message && m_callback_tracker)
                 {
-                    if (callback_tracker)
-                        callback_tracker->onTrack(revScaleX(bbox_2d.x), revScaleY(bbox_2d.y),
+                    if (m_islegacy) {
+                        m_callback_tracker->onTrack(revScaleX(bbox_2d.x), revScaleY(bbox_2d.y),
                                                    revScaleX(bbox_2d.width), revScaleY(bbox_2d.height),
                                                    m_camera_orientation, m_camera_forward);
-                    cv::rectangle(frame, bbox_2d, cv::Scalar(0, 255, 255), 2, 1);
-#ifdef DDEBUG
-                    std::cout << "Tracking at " << bbox_2d << std::endl;
-#endif
-                }
-                else
-                {
-                    if (callback_tracker)
-                        callback_tracker->onTrack(revScaleX(bbox.x), revScaleY(bbox.y),
+                    } else {
+                        m_callback_tracker->onTrack(revScaleX(bbox.x), revScaleY(bbox.y),
                                                    revScaleX(bbox.width), revScaleY(bbox.height),
                                                    m_camera_orientation, m_camera_forward);
-#ifdef DDEBUG
-                    std::cout << "Tracking at " << bbox.x << "  --    " << bbox.y << " xxx "
-                              << bbox.width << "  --    " << bbox.height << std::endl; // Directly print ints
-#endif
-                    cv::rectangle(frame, bbox, cv::Scalar(0, 255, 255), 2, 1);
+                    }
                 }
             }
             else
             {
-                // Tracking failure detected. Only draw text if it's truly failed
                 cv::putText(frame, "Tracking failure detected", cv::Point(100, 80), cv::FONT_HERSHEY_SIMPLEX, 0.75, cv::Scalar(0, 0, 255), 2);
             }
-        }
-        else 
-        {
-            // If not tracking, ensure status is consistently false and update only if it changes
-            if (current_valid_track_status != false) // Only call callback if status changes
-            {
-                current_valid_track_status = false;
-                if (callback_tracker)
-                    callback_tracker->onTrackStatusChanged(false);
-            }
+             // Always draw crosshair if tracking was started
+            cv::line(frame, cv::Point(center_x - cross_arm_length, center_y), cv::Point(center_x + cross_arm_length, center_y), cv::Scalar(0, 255, 0), 2);
+            cv::line(frame, cv::Point(center_x, center_y - cross_arm_length), cv::Point(center_x, center_y + cross_arm_length), cv::Scalar(0, 255, 0), 2);
         }
 
-        // --- Streaming to Virtual Video Device ---
-        if (m_video_fd != -1)
-        {
-            cv::cvtColor(frame, yuv_frame, cv::COLOR_BGR2YUV_I420); // Or COLOR_BGR2YUYV if that's what m_yuv_frame_size implies
+                    
 
-            // Check continuity once after conversion. Size check is critical.
+        // --- OPTIMIZATION: Use V4L2 buffer queuing instead of write() --- (NOT WORKING)
+        // if (m_virtual_device_opened)
+        // {
+        //     cv::cvtColor(frame, yuv_frame, cv::COLOR_BGR2YUV_I420);
+            
+        //     struct v4l2_buffer buf = {};
+        //     buf.type = V4L2_BUF_TYPE_VIDEO_OUTPUT;
+        //     buf.memory = V4L2_MEMORY_MMAP;
+
+        //     // Dequeue a buffer (non-blocking)
+        //     if (CVideo::xioctl(m_video_fd, VIDIOC_DQBUF, &buf) == 0)
+        //     {
+        //         // Copy frame data into the dequeued buffer
+        //         memcpy(m_buffers[buf.index].start, yuv_frame.data, m_yuv_frame_size);
+                
+        //         // Queue the buffer back to the driver
+        //         if (CVideo::xioctl(m_video_fd, VIDIOC_QBUF, &buf) < 0) {
+        //             perror("VIDIOC_QBUF");
+        //             m_process = false; // Stop on critical error
+        //         }
+        //     }
+        //     else if (errno != EAGAIN) {
+        //         perror("VIDIOC_DQBUF");
+        //         m_process = false; // Stop on critical error
+        //     }
+        //     // If errno is EAGAIN, it means the output queue is full. We simply drop the frame,
+        //     // which is the desired behavior to prevent the pipeline from blocking.
+        // }
+
+        if (m_virtual_device_opened)
+        {
+             cv::cvtColor(frame, yuv_frame, cv::COLOR_BGR2YUV_I420);
+             // Check continuity once after conversion. Size check is critical.
             if (yuv_frame.isContinuous() && yuv_frame.total() * yuv_frame.elemSize() == m_yuv_frame_size)
             {
                 ssize_t bytes_written = write(m_video_fd, yuv_frame.data, m_yuv_frame_size);
                 if (bytes_written < 0)
                 {
-                    // Use std::cerr for errors, std::cout for general logs
-                    std::cerr << "Error: Failed to write frame to " << m_output_video_path << ": " << strerror(errno) << std::endl;
+                    std::cout << "Error: Failed to write frame to " << m_output_video_path << ": " << strerror(errno) << " (errno: " << errno << ")" << std::endl;
+
                     if (errno == EAGAIN || errno == EWOULDBLOCK)
                     {
                         // This warning is fine to output, but don't stop the loop.
@@ -530,10 +538,6 @@ void CTracker::track2Rect(const float x, const float y, const float w, const flo
                     }
                     // For other severe errors, consider setting m_process = false;
                 }
-                // Don't spam incomplete write warnings unless debugging
-                // else if (static_cast<size_t>(bytes_written) != m_yuv_frame_size) {
-                //     std::cerr << "Warning: Incomplete frame write to " << m_output_video_path << " (wrote " << bytes_written << " of " << m_yuv_frame_size << " bytes)" << std::endl;
-                // }
             }
             else
             {
@@ -542,31 +546,36 @@ void CTracker::track2Rect(const float x, const float y, const float w, const flo
                           << yuv_frame.total() * yuv_frame.elemSize() << " vs " << m_yuv_frame_size
                           << "). Cannot write to V4L2 device. Stopping stream." << std::endl;
                 // Consider setting m_process = false; or closing m_video_fd
-                // m_process = false;
             }
         }
 
-        // --- Frame Rate Control Implementation ---
         auto end_time = std::chrono::high_resolution_clock::now();
         auto elapsed_time = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time);
-
+        
         if (elapsed_time < target_frame_time_ms)
         {
-            auto time_to_sleep = target_frame_time_ms - elapsed_time;
             #ifdef DDEBUG
                         std::cout << "Elapsed: " << elapsed_time.count() << "ms, Sleeping for: " << time_to_sleep.count() << "ms" << std::endl;
             #endif
-                        std::this_thread::sleep_for(time_to_sleep);
-                    }
-            #ifdef DEBUG
-                    else
-                    {
-                        std::cout << _INFO_CONSOLE_BOLD_TEXT << "Warning: Frame processing took " << _LOG_CONSOLE_BOLD_TEXT << elapsed_time.count() << "ms " << _INFO_CONSOLE_BOLD_TEXT << ", exceeding target "
-                                << _LOG_CONSOLE_BOLD_TEXT << target_frame_time_ms.count() << "ms." << _INFO_CONSOLE_BOLD_TEXT << " Cannot maintain 30 FPS." << _NORMAL_CONSOLE_TEXT_ << std::endl;
-                    }
-            #endif
+            //std::this_thread::sleep_for(target_frame_time_ms - elapsed_time);
+        }
+        #ifdef DDEBUG
+        else
+        {
+            std::cout << _INFO_CONSOLE_BOLD_TEXT << "Warning: Frame processing took " << _LOG_CONSOLE_BOLD_TEXT << elapsed_time.count() << "ms " << _INFO_CONSOLE_BOLD_TEXT << ", exceeding target "
+                    << _LOG_CONSOLE_BOLD_TEXT << target_frame_time_ms.count() << "ms." << _INFO_CONSOLE_BOLD_TEXT << " Cannot maintain 30 FPS." << _NORMAL_CONSOLE_TEXT_ << std::endl;
+        }
+        #endif
 
-        } // End of while (m_process) loop
+        #ifdef DDEBUG
+        if (frame_counter % 10 == 0)
+        {
+            std::cout << _INFO_CONSOLE_BOLD_TEXT << "Elapsed: " << _LOG_CONSOLE_BOLD_TEXT << elapsed_time.count() << "ms" << std::endl;
+        }
+        #endif
+        
+        ++frame_counter;
+    }// End of while (m_process) loop
 
     std::cout << _LOG_CONSOLE_BOLD_TEXT << "tracking off" << _NORMAL_CONSOLE_TEXT_ << std::endl;
 }

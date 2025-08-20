@@ -32,7 +32,7 @@ typedef enum {
 #define MODULE_CLASS_P2P                        "p2p"
 #define MODULE_CLASS_GENERIC                    "gen"
 #define MODULE_CLASS_GPIO                       "gpio" 
-#define MODULE_CLASS_A_RECOGNITION              "ai_rec" 
+#define MODULE_CLASS_A_RECOGNITION              "aiq" 
 #define MODULE_CLASS_TRACKING                   "trk" 
 
 

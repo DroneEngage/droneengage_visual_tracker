@@ -7,7 +7,7 @@
 #include "../de_common/messages.hpp"
 #include "tracker.hpp"
 #include "tracker_main.hpp"
-
+#include "video.hpp"
 
 
 
@@ -21,29 +21,104 @@ bool CTrackerMain::init()
     
     if (!m_jsonConfig.contains("tracker_algorithm_index"))
     {
-        std::cout << _ERROR_CONSOLE_BOLD_TEXT_ << "FATAL ERROR: " << _INFO_CONSOLE_TEXT << CConfigFile::getInstance().getFileName() << " does not have field " << _ERROR_CONSOLE_TEXT_ "[tracker_algorithm_index]" <<  _NORMAL_CONSOLE_TEXT_ << std::endl;
+        std::cout << _ERROR_CONSOLE_BOLD_TEXT_ << "FATAL ERROR: " << _INFO_CONSOLE_TEXT << CConfigFile::getInstance().getFileName() 
+                << " does not have field " << _ERROR_CONSOLE_TEXT_ "[tracker_algorithm_index]" <<  _NORMAL_CONSOLE_TEXT_ 
+                << std::endl;
 	
         exit(1);
     }
 
-    if (!m_jsonConfig.contains("source_video_device"))
+    std::string source_video_device = "";
+    std::string output_video_device = "";
+
+    if (m_jsonConfig.contains("source_video_device_name"))
     {
-        std::cout << _ERROR_CONSOLE_BOLD_TEXT_ << "FATAL ERROR: " << _INFO_CONSOLE_TEXT << CConfigFile::getInstance().getFileName() << " does not have field " << _ERROR_CONSOLE_TEXT_ "[source_video_device]" <<  _NORMAL_CONSOLE_TEXT_ << std::endl;
-	
-        exit(1);
+        const int video_index = CVideo::findVideoDeviceIndex(m_jsonConfig["source_video_device_name"]);
+        if (video_index != -1) 
+        {
+            source_video_device = "/dev/video" + std::to_string(video_index);
+
+            std::cout << _SUCCESS_CONSOLE_BOLD_TEXT_ << "Using source_video_device_name:" << _INFO_CONSOLE_BOLD_TEXT << source_video_device 
+                    << _NORMAL_CONSOLE_TEXT_
+                    << std::endl;
+        }
     }
+
+    if (source_video_device.empty())
+    {
+        if (!m_jsonConfig.contains("source_video_device"))
+        {
+            std::cout << _ERROR_CONSOLE_BOLD_TEXT_ << "FATAL ERROR: " << _INFO_CONSOLE_TEXT << CConfigFile::getInstance().getFileName() 
+                    << " does not have field " << _ERROR_CONSOLE_TEXT_ "[source_video_device]" <<  _NORMAL_CONSOLE_TEXT_ 
+                    << std::endl;
+        
+            exit(1);
+        }
+        else
+        {
+            source_video_device = m_jsonConfig["source_video_device"];
+
+            std::cout << _SUCCESS_CONSOLE_BOLD_TEXT_ << "Using source_video_device:" << _INFO_CONSOLE_BOLD_TEXT << source_video_device 
+                    << _NORMAL_CONSOLE_TEXT_
+                    << std::endl;
+        }
+    }
+
+    
+    if (m_jsonConfig.contains("output_video_device_name"))
+    {
+        const int video_index = CVideo::findVideoDeviceIndex(m_jsonConfig["output_video_device_name"]);
+        if (video_index != -1) 
+        {
+            output_video_device = "/dev/video" + std::to_string(video_index);
+
+            std::cout << _SUCCESS_CONSOLE_BOLD_TEXT_ << "Using output_video_device_name:" << _INFO_CONSOLE_BOLD_TEXT << output_video_device 
+                    << _NORMAL_CONSOLE_TEXT_
+                    << std::endl;
+
+        }
+    }
+
+    
+    if (output_video_device.empty())
+    {
+        if (!m_jsonConfig.contains("output_video_device"))
+        {
+            std::cout << _ERROR_CONSOLE_BOLD_TEXT_ << "FATAL ERROR:" << _INFO_CONSOLE_TEXT << " No output_video_device specified in config.json" <<  _NORMAL_CONSOLE_TEXT_ << std::endl;
+            exit(1);
+        }
+        else
+        {
+            output_video_device = m_jsonConfig["output_video_device"];
+
+            std::cout << _SUCCESS_CONSOLE_BOLD_TEXT_ << "Using output_video_device:" << _INFO_CONSOLE_BOLD_TEXT << output_video_device 
+                    <<   _NORMAL_CONSOLE_TEXT_
+                    << std::endl;
+        }
+    }
+    
+    
 
     m_tracker = std::make_unique<CTracker>(CTracker(this));
-    std::string output_video_device = "";
-    if (m_jsonConfig.contains("output_video_device"))
+    
+    uint16_t frames_to_skip_between_messages = FRAMES_TO_SKIP_BETWEEN_MESSAGES;
+    if (m_jsonConfig.contains("frames_to_skip_between_messages"))
     {
-        output_video_device = m_jsonConfig["output_video_device"];
+        frames_to_skip_between_messages = m_jsonConfig["frames_to_skip_between_messages"].get<uint16_t>();
+    }
+
+    uint16_t frame_to_skip_between_track_process = FRAMES_TO_SKIP_BETWEEN_TRACK_PROCESS;
+    if (m_jsonConfig.contains("frame_to_skip_between_track_process"))
+    {
+        frame_to_skip_between_track_process = m_jsonConfig["frame_to_skip_between_track_process"].get<uint16_t>();
     }
     
     uint16_t camera_orientation = m_jsonConfig["camera_orientation"].get<uint16_t>();
     bool camera_forward = m_jsonConfig["camera_forward"].get<bool>();
 
-    bool res = m_tracker.get()->init(m_jsonConfig["tracker_algorithm_index"], m_jsonConfig["source_video_device"], camera_orientation, camera_forward, output_video_device);
+    bool res = m_tracker.get()->init(m_jsonConfig["tracker_algorithm_index"], source_video_device
+        , camera_orientation, camera_forward, output_video_device
+        , frames_to_skip_between_messages, frame_to_skip_between_track_process) ;
     if (res == false)
     {
         std::cout << _ERROR_CONSOLE_BOLD_TEXT_ << "FATAL ERROR:" << _INFO_CONSOLE_TEXT << " Failed to initialize tracker. " <<  _NORMAL_CONSOLE_TEXT_ << std::endl;
@@ -51,11 +126,6 @@ bool CTrackerMain::init()
 	}
 
 
-    if (output_video_device=="")
-    {
-        std::cout << _ERROR_CONSOLE_BOLD_TEXT_ << "FATAL ERROR:" << _INFO_CONSOLE_TEXT << " No output_video_device specified in config.json" <<  _NORMAL_CONSOLE_TEXT_ << std::endl;
-        exit(1);
-    }
     
     m_tracker.get()->track(-1,0, 0);
     
@@ -73,27 +143,67 @@ bool CTrackerMain::uninit()
 
 void CTrackerMain::startTrackingRect(const float x, const float y, const float w, const float h)
 {
+    #ifdef DEBUG
+    std::cout << _INFO_CONSOLE_BOLD_TEXT << "rect:" << x << ":" << y << ":" << w << ":" << h << std::endl;
+    #endif
+        
+    if (m_tracker_status == TrackingTarget_STATUS_TRACKING_STOPPED) return ;
+    
     m_tracker.get()->stop();
 
     m_tracker.get()->trackRect(x,y,w,h);
+
+    m_trackerFacade.sendTrackingTargetStatus (
+        std::string(""),
+        m_tracker_status
+    );
 }
+
+
+void CTrackerMain::enableTracking()
+{
+    // this state means I will accept start tracking point.
+    // this is not a real start for the tracker core.
+    m_tracker_status = TrackingTarget_STATUS_TRACKING_ENABLED;
+    
+    // ACK
+    m_trackerFacade.sendTrackingTargetStatus (
+        std::string(""),
+        m_tracker_status
+    );
+}
+
+void CTrackerMain::pauseTracking()
+{
+    m_tracker.get()->pause();
+}
+
 
 void CTrackerMain::stopTracking()
 {
+    m_tracker_status = TrackingTarget_STATUS_TRACKING_STOPPED;
     m_tracker.get()->stop();
+
+    m_trackerFacade.sendTrackingTargetStatus (
+        std::string(""),
+        m_tracker_status
+    );
 }
+
+
 
 /**
  * Called when there is a a tracked object.
- * output from 0 to 1.0
+ * input x,y,w,h:[0 to 1.0]
+ * output from [-0.5 to 0.5]
  * (0,0) top left
  * center = [(x + w )/2 , (y + h)/2]
  */
 void CTrackerMain::onTrack (const float& x, const float& y, const float& width, const float& height, const uint16_t camera_orientation, const bool camera_forward) 
 {
 
-   const double center_x = 0.5 -  x + width /2.0f; 
-   const double center_y = 0.5 - y + height /2.0f; 
+   const double center_x = -0.5 +  x + width /2.0f; 
+   const double center_y = -0.5 + y + height /2.0f; 
       
    double delta_x,delta_y,delta_z;
 
@@ -104,8 +214,8 @@ void CTrackerMain::onTrack (const float& x, const float& y, const float& width, 
             delta_y =  center_y;
         break;
     case DEF_TRACK_ORIENTATION_DEG_90:
-            delta_x = -center_y;
-            delta_y =  center_x;
+            delta_x =   center_y;
+            delta_y =  -center_x;
         break;
     
     case DEF_TRACK_ORIENTATION_DEG_180:
@@ -114,18 +224,23 @@ void CTrackerMain::onTrack (const float& x, const float& y, const float& width, 
         break;
 
     case DEF_TRACK_ORIENTATION_DEG_270:
-            delta_x =  center_y;
-            delta_y = -center_x;
+            delta_x =  -center_y;
+            delta_y =  -center_x;
         break;
     
     default:
+        std::cerr << _ERROR_CONSOLE_BOLD_TEXT_ << "Invalid camera orientation: " 
+                  << camera_orientation << _NORMAL_CONSOLE_TEXT_ << std::endl;
         break;
     }
 
+#ifdef DEBUG
+    std::cout << "Track Object:" << center_x << ":" << center_y << std::endl;
+#endif
 
     // Apply precision limiting
-    delta_x = roundToPrecision(delta_x, 6);
-    delta_y = roundToPrecision(delta_y, 6);
+    delta_x = roundToPrecision(delta_x, 3);
+    delta_y = roundToPrecision(delta_y, 3);
 
 
     Json_de targets = Json_de::array();
@@ -134,7 +249,7 @@ void CTrackerMain::onTrack (const float& x, const float& y, const float& width, 
     {
         targets.push_back({
             {"x",delta_x},
-            {"y",delta_y}
+            {"y",-delta_y}
         });
     }
     else
@@ -169,12 +284,42 @@ void CTrackerMain::onTrack (const float& x, const float& y, const float& width, 
 /**
  * Called once trackig status changed.
  */
-void CTrackerMain::onTrackStatusChanged (const bool& track)  
+void CTrackerMain::onTrackStatusChanged (const int& status)  
 {
+    m_tracker_status = status;
+    
     m_trackerFacade.sendTrackingTargetStatus (
         std::string(""),
-        track
+        status
     );
     
+    if (((m_tracker_status == TrackingTarget_STATUS_TRACKING_LOST)
+        || (m_tracker_status == TrackingTarget_STATUS_TRACKING_ENABLED))
+    && (m_ai_tracker_status != TrackingTarget_ACTION_AI_Recognition_ENABLE)
+        )
+        {
+            // NO AI to Help
+            // Brake Mode
+            std::cout << _ERROR_CONSOLE_BOLD_TEXT_ << "CANNOT CONTINUE TRACKING..." << _NORMAL_CONSOLE_TEXT_ << std::endl;
+        }
+
+    #ifdef DDEBUG
     std::cout << _INFO_CONSOLE_BOLD_TEXT << "onTrackStatusChanged:" << _LOG_CONSOLE_BOLD_TEXT << std::to_string(track) << _NORMAL_CONSOLE_TEXT_ << std::endl;
+    #endif
 }
+
+void CTrackerMain::onAITrackerBestRect(const float x, const float y, const float w, const float h)
+{
+    m_ai_tracker_status = TrackingTarget_STATUS_AI_Recognition_DETECTED;
+
+#ifdef DEBUG
+    std::cout << "onAITrackerBestRect:" << m_tracker_status << std::endl;
+#endif
+    if ((m_tracker_status == TrackingTarget_STATUS_TRACKING_LOST)
+    || (m_tracker_status == TrackingTarget_STATUS_TRACKING_ENABLED))
+    {
+        std::cout << _INFO_CONSOLE_BOLD_TEXT << "ai_rect:" << x << ":" << y << ":" << w << ":" << h << std::endl;
+        startTrackingRect(x, y, w, h);
+    }
+}
+            

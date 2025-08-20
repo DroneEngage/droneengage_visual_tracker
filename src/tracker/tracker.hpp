@@ -27,6 +27,13 @@
 #define DEF_TRACK_ORIENTATION_DEG_270   3
 
 
+// Delay in processing OnTrack by the unit is high, so sending a full rate messages
+// is not needed especially that mavlink module has its own timing and discards messsages 
+// with small timespan.
+// The reason I dont skip the tracking process itself is to increase the probability of locking on the object.
+constexpr uint16_t FRAMES_TO_SKIP_BETWEEN_MESSAGES = 15;
+constexpr uint16_t FRAMES_TO_SKIP_BETWEEN_TRACK_PROCESS = 5;
+
 typedef struct buffer {
     void* start;
     size_t length;
@@ -56,7 +63,7 @@ namespace tracker
     {
         public:
             virtual void onTrack (const float& x, const float& y, const float& width, const float& height, const uint16_t camera_orientation, const bool camera_forward) = 0;
-            virtual void onTrackStatusChanged (const bool& track) = 0;
+            virtual void onTrackStatusChanged (const int& track) = 0;
     };
 
     class CTracker 
@@ -78,11 +85,14 @@ namespace tracker
             
 
         public:
-            bool init (const enum ENUM_TRACKER_TYPE tracker_type, const std::string& video_path, const uint16_t camera_orientation , const bool camera_forward, const std::string& output_video_device);
+            bool init (const enum ENUM_TRACKER_TYPE tracker_type, const std::string& video_path
+                , const uint16_t camera_orientation , const bool camera_forward, const std::string& output_video_device
+                , uint16_t frames_to_skip_between_messages, uint16_t frame_to_skip_between_track_process);
             bool uninit();
             void track(const float x, const float y, const float radius);
             void trackRect(const float x, const float y, const float w, const float h);
             void track2Rect(const float x, const float y, const float w, const float h);
+            void pause();
             void stop();
             const std::string getActiveTracker() 
             {
@@ -117,12 +127,12 @@ namespace tracker
              * output from 0 to 1.0
              * (0,0) top left
              */
-            float revScaleX(const float& x) const
+            inline float revScaleX(const float& x) const
             {
                 return (x / m_image_width);
             };
 
-            float revScaleY(const float& y) const
+            inline float revScaleY(const float& y) const
             {
                 return (y / m_image_height);
             };
@@ -142,7 +152,7 @@ namespace tracker
 
             int m_image_width  = 640;
             int m_image_height = 480;
-            int m_image_fps = 5;
+            
             
             cv::VideoCapture video_capture;
             CCallBack_Tracker * m_callback_tracker;
@@ -154,7 +164,8 @@ namespace tracker
             int m_yuv_frame_size = 0;
 
             bool m_virtual_device_opened = false;
-
+            bool m_is_tracking_active_initial = false;
+            
             bool m_camera_forward    = false;
             uint16_t m_camera_orientation   = DEF_TRACK_ORIENTATION_DEG_0;
 
@@ -163,6 +174,10 @@ namespace tracker
             BUFFER * m_buffers;
             unsigned int m_buffer_count;
             unsigned int m_current_buffer_index;
+
+
+            uint16_t m_frames_to_skip_between_messages  = FRAMES_TO_SKIP_BETWEEN_MESSAGES;
+            uint16_t m_frame_to_skip_between_track_process = FRAMES_TO_SKIP_BETWEEN_TRACK_PROCESS;
     };
 
 }
