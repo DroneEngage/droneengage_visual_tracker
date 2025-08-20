@@ -39,6 +39,11 @@ class CVideo
 
         static bool getVideoResolution(const std::string& video_device_path, unsigned int& width, unsigned int& height);
 
+        static int findVideoDeviceIndex(const std::string& targetDeviceName);
+
+    private:
+
+        static std::string trim(const std::string& str);
 };
 
 }

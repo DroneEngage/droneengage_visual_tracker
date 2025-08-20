@@ -247,6 +247,7 @@ bool CTracker::init(const enum ENUM_TRACKER_TYPE tracker_type, const std::string
     }
 
     
+    std::cout << _SUCCESS_CONSOLE_BOLD_TEXT_ << "-------------------------------------------" << _NORMAL_CONSOLE_TEXT_ << std::endl;
 
     std::cout << _SUCCESS_CONSOLE_BOLD_TEXT_ << "Video Capture:" << _LOG_CONSOLE_BOLD_TEXT << video_path << _NORMAL_CONSOLE_TEXT_ << std::endl;
    

@@ -7,7 +7,7 @@
 #include "../de_common/messages.hpp"
 #include "tracker.hpp"
 #include "tracker_main.hpp"
-
+#include "video.hpp"
 
 
 
@@ -28,23 +28,79 @@ bool CTrackerMain::init()
         exit(1);
     }
 
-    if (!m_jsonConfig.contains("source_video_device"))
+    std::string source_video_device = "";
+    std::string output_video_device = "";
+
+    if (m_jsonConfig.contains("source_video_device_name"))
     {
-        std::cout << _ERROR_CONSOLE_BOLD_TEXT_ << "FATAL ERROR: " << _INFO_CONSOLE_TEXT << CConfigFile::getInstance().getFileName() 
-                << " does not have field " << _ERROR_CONSOLE_TEXT_ "[source_video_device]" <<  _NORMAL_CONSOLE_TEXT_ 
-                << std::endl;
-	
-        exit(1);
+        const int video_index = CVideo::findVideoDeviceIndex(m_jsonConfig["source_video_device_name"]);
+        if (video_index != -1) 
+        {
+            source_video_device = "/dev/video" + std::to_string(video_index);
+
+            std::cout << _SUCCESS_CONSOLE_BOLD_TEXT_ << "Using source_video_device_name:" << _INFO_CONSOLE_BOLD_TEXT << source_video_device 
+                    << _NORMAL_CONSOLE_TEXT_
+                    << std::endl;
+        }
+    }
+
+    if (source_video_device.empty())
+    {
+        if (!m_jsonConfig.contains("source_video_device"))
+        {
+            std::cout << _ERROR_CONSOLE_BOLD_TEXT_ << "FATAL ERROR: " << _INFO_CONSOLE_TEXT << CConfigFile::getInstance().getFileName() 
+                    << " does not have field " << _ERROR_CONSOLE_TEXT_ "[source_video_device]" <<  _NORMAL_CONSOLE_TEXT_ 
+                    << std::endl;
+        
+            exit(1);
+        }
+        else
+        {
+            source_video_device = m_jsonConfig["source_video_device"];
+
+            std::cout << _SUCCESS_CONSOLE_BOLD_TEXT_ << "Using source_video_device:" << _INFO_CONSOLE_BOLD_TEXT << source_video_device 
+                    << _NORMAL_CONSOLE_TEXT_
+                    << std::endl;
+        }
     }
 
     
-    m_tracker = std::make_unique<CTracker>(CTracker(this));
-    std::string output_video_device = "";
-    if (m_jsonConfig.contains("output_video_device"))
+    if (m_jsonConfig.contains("output_video_device_name"))
     {
-        output_video_device = m_jsonConfig["output_video_device"];
+        const int video_index = CVideo::findVideoDeviceIndex(m_jsonConfig["output_video_device_name"]);
+        if (video_index != -1) 
+        {
+            output_video_device = "/dev/video" + std::to_string(video_index);
+
+            std::cout << _SUCCESS_CONSOLE_BOLD_TEXT_ << "Using output_video_device_name:" << _INFO_CONSOLE_BOLD_TEXT << output_video_device 
+                    << _NORMAL_CONSOLE_TEXT_
+                    << std::endl;
+
+        }
     }
 
+    
+    if (output_video_device.empty())
+    {
+        if (!m_jsonConfig.contains("output_video_device"))
+        {
+            std::cout << _ERROR_CONSOLE_BOLD_TEXT_ << "FATAL ERROR:" << _INFO_CONSOLE_TEXT << " No output_video_device specified in config.json" <<  _NORMAL_CONSOLE_TEXT_ << std::endl;
+            exit(1);
+        }
+        else
+        {
+            output_video_device = m_jsonConfig["output_video_device"];
+
+            std::cout << _SUCCESS_CONSOLE_BOLD_TEXT_ << "Using output_video_device:" << _INFO_CONSOLE_BOLD_TEXT << output_video_device 
+                    <<   _NORMAL_CONSOLE_TEXT_
+                    << std::endl;
+        }
+    }
+    
+    
+
+    m_tracker = std::make_unique<CTracker>(CTracker(this));
+    
     uint16_t frames_to_skip_between_messages = FRAMES_TO_SKIP_BETWEEN_MESSAGES;
     if (m_jsonConfig.contains("frames_to_skip_between_messages"))
     {
@@ -60,7 +116,7 @@ bool CTrackerMain::init()
     uint16_t camera_orientation = m_jsonConfig["camera_orientation"].get<uint16_t>();
     bool camera_forward = m_jsonConfig["camera_forward"].get<bool>();
 
-    bool res = m_tracker.get()->init(m_jsonConfig["tracker_algorithm_index"], m_jsonConfig["source_video_device"]
+    bool res = m_tracker.get()->init(m_jsonConfig["tracker_algorithm_index"], source_video_device
         , camera_orientation, camera_forward, output_video_device
         , frames_to_skip_between_messages, frame_to_skip_between_track_process) ;
     if (res == false)
@@ -70,11 +126,6 @@ bool CTrackerMain::init()
 	}
 
 
-    if (output_video_device=="")
-    {
-        std::cout << _ERROR_CONSOLE_BOLD_TEXT_ << "FATAL ERROR:" << _INFO_CONSOLE_TEXT << " No output_video_device specified in config.json" <<  _NORMAL_CONSOLE_TEXT_ << std::endl;
-        exit(1);
-    }
     
     m_tracker.get()->track(-1,0, 0);
     
@@ -183,7 +234,9 @@ void CTrackerMain::onTrack (const float& x, const float& y, const float& width, 
         break;
     }
 
+#ifdef DEBUG
     std::cout << "Track Object:" << center_x << ":" << center_y << std::endl;
+#endif
 
     // Apply precision limiting
     delta_x = roundToPrecision(delta_x, 3);
@@ -259,7 +312,9 @@ void CTrackerMain::onAITrackerBestRect(const float x, const float y, const float
 {
     m_ai_tracker_status = TrackingTarget_STATUS_AI_Recognition_DETECTED;
 
+#ifdef DEBUG
     std::cout << "onAITrackerBestRect:" << m_tracker_status << std::endl;
+#endif
     if ((m_tracker_status == TrackingTarget_STATUS_TRACKING_LOST)
     || (m_tracker_status == TrackingTarget_STATUS_TRACKING_ENABLED))
     {
