@@ -431,7 +431,10 @@ void CTracker::track2Rect(const float x, const float y, const float w, const flo
             std::cerr << _ERROR_CONSOLE_BOLD_TEXT_ << "WARNING:" << _INFO_CONSOLE_TEXT << " Captured an empty frame. Stopping tracking."
                       << _NORMAL_CONSOLE_TEXT_ << std::endl;
             if (m_callback_tracker) m_callback_tracker->onTrackStatusChanged(TrackingTarget_STATUS_TRACKING_STOPPED);
-            break;
+
+            std::this_thread::sleep_for(std::chrono::milliseconds(200));
+
+            continue;
         }
         
         // --- Tracking Logic ---
