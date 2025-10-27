@@ -117,7 +117,6 @@ configure_file(de_tracker.config.module.json ${OUTPUT_DIRECTORY}/de_tracker.conf
 set_target_properties( OUTPUT_BINARY 
                 PROPERTIES 
                     OUTPUT_NAME "de_tracker"
-                    SUFFIX ".so"
                 )
 
 # Highlight if DDEBUG or TEST_MODE_NO_HAILO_LINK are enabled
