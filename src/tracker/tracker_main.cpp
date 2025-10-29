@@ -1,10 +1,10 @@
 #include <stdio.h>
 #include <iostream>
 
-#include "../helpers/colors.hpp"
-#include "../helpers/helpers.hpp"
-#include "../de_common/configFile.hpp"
-#include "../de_common/messages.hpp"
+#include "../de_common/helpers/colors.hpp"
+#include "../de_common/helpers/helpers.hpp"
+#include "../de_common/de_databus/configFile.hpp"
+#include "../de_common/de_databus/messages.hpp"
 #include "tracker.hpp"
 #include "tracker_main.hpp"
 #include "video.hpp"
@@ -304,7 +304,7 @@ void CTrackerMain::onTrackStatusChanged (const int& status)
         }
 
     #ifdef DDEBUG
-    std::cout << _INFO_CONSOLE_BOLD_TEXT << "onTrackStatusChanged:" << _LOG_CONSOLE_BOLD_TEXT << std::to_string(track) << _NORMAL_CONSOLE_TEXT_ << std::endl;
+    std::cout << _INFO_CONSOLE_BOLD_TEXT << "onTrackStatusChanged:" << _LOG_CONSOLE_BOLD_TEXT << std::to_string(m_tracker_status) << _NORMAL_CONSOLE_TEXT_ << std::endl;
     #endif
 }
 

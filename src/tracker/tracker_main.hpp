@@ -1,15 +1,15 @@
 #ifndef TRACKER_MAIN_H
 #define TRACKER_MAIN_H
 
-#include "../de_common/de_module.hpp"
-#include "../de_common/de_common_callback.hpp"
+#include "../de_common/de_databus/de_module.hpp"
+#include "../de_common/de_databus/de_common_callback.hpp"
 
 #include "tracker.hpp"
 #include "tracker_facade.hpp"
 
 
 
-#include "../helpers/json_nlohmann.hpp"
+#include "../de_common/helpers/json_nlohmann.hpp"
 using Json_de = nlohmann::json;
 
 namespace de

@@ -93,10 +93,11 @@ add_compile_definitions(
 
 # Gather all source files
 file(GLOB folder_src "./src/*.cpp")
-file(GLOB folder_common "./src/de_common/*.cpp")
 file(GLOB folder_tracker "./src/tracker/*.cpp")
-file(GLOB folder_helpers "./src/helpers/*.cpp")
-set(files ${folder_src} ${folder_common} ${folder_tracker} ${folder_helpers})
+file(GLOB folder_uavos "./src/de_common/*.cpp")
+file(GLOB folder_uavos1 "./src/de_common/de_databus/*.cpp")
+file(GLOB folder_uavos2 "./src/de_common/helpers/*.cpp")
+set(files ${folder_src} ${folder_uavos} ${folder_uavos1} ${folder_uavos2} ${folder_tracker})
 
 # Add the executable target and link its libraries
 add_executable(OUTPUT_BINARY ${files})

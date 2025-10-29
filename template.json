@@ -1,0 +1,45 @@
+[
+    {
+        "name": "Camera Settings",
+        "template": {
+            "Camera": {
+                "fieldName": "camera",
+                "type": "object",
+                "fields": {
+                    "source video device": {
+                        "fieldName": "source_video_device",
+                        "order":1,
+                        "type": "text",
+                        "defaultvalue": "/dev/video1",
+                        "optional": true,
+                        "desc": "video input by number."
+                    },
+                    "source_video_device_name": {
+                        "order":2,
+                        "type": "text",
+                        "defaultvalue": "DE-RPI",
+                        "optional": true,
+                        "desc": "video input by name."
+                    },
+                    "output_video_device": {
+                        "order":3,
+                        "type": "text",
+                        "defaultvalue": "/dev/video1",
+                        "optional": true,
+                        "desc": "virtual video output by number."
+                    },
+                    "output_video_device_name": {
+                        "order":4,
+                        "type": "text",
+                        "defaultvalue": "DE-TRK",
+                        "optional": true,
+                        "desc": "virtual video output by name."
+                    }
+                    
+                },
+                "optional": false,
+                "desc": "serial port settings - ONLY ONE fcb_connection_uri"
+            }
+        }
+    }
+]

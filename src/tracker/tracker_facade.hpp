@@ -2,12 +2,12 @@
 #define TRACKER_FACADE_MODULE_H
 
 
-#include "../helpers/json_nlohmann.hpp"
+#include "../de_common/helpers/json_nlohmann.hpp"
 
 using Json_de = nlohmann::json;
 
-#include "../de_common/de_facade_base.hpp"
-#include "../de_common/messages.hpp"
+#include "../de_common/de_databus/de_facade_base.hpp"
+#include "../de_common/de_databus/messages.hpp"
 
 
 

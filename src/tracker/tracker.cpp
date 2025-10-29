@@ -5,8 +5,8 @@
 #include <opencv2/tracking.hpp>
 #include <opencv2/core/ocl.hpp>
 
-#include "../helpers/colors.hpp"
-#include "../helpers/helpers.hpp"
+#include "../de_common/helpers/colors.hpp"
+#include "../de_common/helpers/helpers.hpp"
 #include "video.hpp"
 #include "tracker.hpp"
 
@@ -15,7 +15,7 @@
 #include <unistd.h>
 #include <sys/ioctl.h>
 #include <linux/videodev2.h>
-#include "../de_common/messages.hpp"
+#include "../de_common/de_databus/messages.hpp"
 using namespace de::tracker;
 
 std::thread m_framesThread;
@@ -555,9 +555,8 @@ void CTracker::track2Rect(const float x, const float y, const float w, const flo
         if (elapsed_time < target_frame_time_ms)
         {
             #ifdef DDEBUG
-                        std::cout << "Elapsed: " << elapsed_time.count() << "ms, Sleeping for: " << time_to_sleep.count() << "ms" << std::endl;
+                        std::cout << "Elapsed: " << elapsed_time.count() << "ms, Sleeping for: " << target_frame_time_ms.count() - elapsed_time.count() << "ms" << std::endl;
             #endif
-            //std::this_thread::sleep_for(target_frame_time_ms - elapsed_time);
         }
         #ifdef DDEBUG
         else

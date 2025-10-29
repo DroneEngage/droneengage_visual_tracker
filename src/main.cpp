@@ -2,18 +2,18 @@
 #include <signal.h>
 #include <iostream>
 
-#include "./helpers/colors.hpp"
-#include "./helpers/helpers.hpp"
-#include "./helpers/getopt_cpp.hpp"
-#include "./helpers/util_rpi.hpp"
+#include "./de_common/helpers/colors.hpp"
+#include "./de_common/helpers/helpers.hpp"
+#include "./de_common/helpers/getopt_cpp.hpp"
+#include "./de_common/helpers/util_rpi.hpp"
 #include "version.hpp"
 #include "defines.hpp"
-#include "./de_common/messages.hpp"
+#include "./de_common/de_databus/messages.hpp"
 #include "tracker/tracker.hpp"
-#include "./de_common/configFile.hpp"
-#include "./de_common/localConfigFile.hpp"
-#include "./de_common/udpClient.hpp"
-#include "./de_common/de_module.hpp"
+#include "./de_common/de_databus/configFile.hpp"
+#include "./de_common/de_databus/localConfigFile.hpp"
+#include "./de_common/de_databus/udpClient.hpp"
+#include "./de_common/de_databus/de_module.hpp"
 #include "tracker/tracker_main.hpp"
 #include "tracker/tracker_andruav_message_parser.hpp"
 
@@ -22,7 +22,9 @@
                         TYPE_AndruavMessage_TrackingTargetLocation,\
                         TYPE_AndruavMessage_TargetTracking_STATUS,\
                         TYPE_AndruavMessage_AI_Recognition_STATUS,\
-                        TYPE_AndruavMessage_AI_Recognition_TargetLocation}
+                        TYPE_AndruavMessage_AI_Recognition_TargetLocation,\
+                        TYPE_AndruavMessage_CONFIG_ACTION, \
+                        TYPE_AndruavMessage_DUMMY}
 
 // This is a timestamp used as instance unique number. if changed then communicator module knows module has restarted.
 std::time_t instance_time_stamp;
@@ -41,7 +43,7 @@ std::string  ModuleKey;
 int AndruavServerConnectionStatus = SOCKET_STATUS_FREASH;
 
 de::tracker::CTrackerMain& cTrackerMain = de::tracker::CTrackerMain::getInstance();
-de::tracker::CTrackerAndruavMessageParser cTrackerAndruavMessageParser = de::tracker::CTrackerAndruavMessageParser();
+de::tracker::CTrackerAndruavMessageParser& cTrackerAndruavMessageParser = de::tracker::CTrackerAndruavMessageParser::getInstance();
 
 de::CConfigFile& cConfigFile = de::CConfigFile::getInstance();
 de::CLocalConfigFile& cLocalConfigFile = de::CLocalConfigFile::getInstance();
