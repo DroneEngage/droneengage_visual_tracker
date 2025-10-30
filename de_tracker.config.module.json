@@ -27,7 +27,7 @@
 
     "camera": {
     // Specific Module Parameters
-    "source_video_device"               : "/dev/video2",
+    //"source_video_device"               : "/dev/video2",
     "output_video_device"               : "/dev/video3"
     //"source_video_device_name"          : "DE-CAM1",
     //"output_video_device_name"          : "DE-CAM2",
