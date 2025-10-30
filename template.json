@@ -41,5 +41,39 @@
                 "desc": "serial port settings - ONLY ONE fcb_connection_uri"
             }
         }
+    },
+    { "name": "Tracking Settings",
+        "template": {
+            "Tracker Settings": {
+                "fieldName": "tracking",
+                "type": "object",
+                "fields": {
+                    "tracker algorithm index": {
+                        "fieldName": "tracker_algorithm_index",
+                        "order":1,
+                        "type": "number",
+                        "defaultvalue": 7,
+                        "optional": false,
+                        "desc": "(0-7)(BOOST,MIL,KCF,TLD,MEDIANFLOW,GOTURN,MOSSE,CSRT)"
+                    },
+                    "Camera Rotation": {
+                        "fieldName": "camera_orientation",
+                        "order":2,
+                        "type": "number",
+                        "defaultvalue": 0,
+                        "optional": true,
+                        "desc": "Camera Rotation (0:0,1:90,2:180,3:270)"
+                    },
+                    "Camera Forward": {
+                        "fieldName": "camera_forward",
+                        "order":3,
+                        "type": "checkbox",
+                        "defaultvalue": false,
+                        "optional": true,
+                        "desc": "unchecked-horizontal / checked-vertical"
+                    }
+                }
+            }
+        }
     }
 ]
