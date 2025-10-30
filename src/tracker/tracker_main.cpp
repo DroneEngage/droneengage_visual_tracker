@@ -29,7 +29,7 @@ bool CTrackerMain::init()
                 << " does not have field " << _ERROR_CONSOLE_TEXT_ "[tracking]" <<  _NORMAL_CONSOLE_TEXT_ 
                 << std::endl;
 	
-        exit(1);
+        return false;
     }
     else
     {
@@ -78,7 +78,7 @@ bool CTrackerMain::init()
                             << " does not have field " << _ERROR_CONSOLE_TEXT_ "[source_video_device]" <<  _NORMAL_CONSOLE_TEXT_ 
                             << std::endl;
                 
-                    exit(1);
+                    return false;
                 }
                 else
                 {
@@ -111,7 +111,7 @@ bool CTrackerMain::init()
                 if (!camera.contains("output_video_device"))
                 {
                     std::cout << _ERROR_CONSOLE_BOLD_TEXT_ << "FATAL ERROR:" << _INFO_CONSOLE_TEXT << " No output_video_device specified in config.json" <<  _NORMAL_CONSOLE_TEXT_ << std::endl;
-                    exit(1);
+                    return false;
                 }
                 else
                 {
@@ -126,7 +126,7 @@ bool CTrackerMain::init()
     else
     {
         std::cout << _ERROR_CONSOLE_BOLD_TEXT_ << "FATAL ERROR:" << _INFO_CONSOLE_TEXT << " No camera specified in config.json" <<  _NORMAL_CONSOLE_TEXT_ << std::endl;
-        exit(1);  
+        return false; 
     }
     
     uint16_t frames_to_skip_between_messages = FRAMES_TO_SKIP_BETWEEN_MESSAGES;
@@ -174,7 +174,7 @@ bool CTrackerMain::init()
     if (res == false)
     {
         std::cout << _ERROR_CONSOLE_BOLD_TEXT_ << "FATAL ERROR:" << _INFO_CONSOLE_TEXT << " Failed to initialize tracker. " <<  _NORMAL_CONSOLE_TEXT_ << std::endl;
-        exit(1);
+        return false;
 	}
 
 
