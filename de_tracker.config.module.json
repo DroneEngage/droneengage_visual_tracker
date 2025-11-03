@@ -24,8 +24,8 @@
         // Specific Module Parameters
         //"source_video_device"               : "/dev/video2",
         //"output_video_device": "/dev/video3"
-        "source_video_device_name"          : "DE-RPI",  // DE-RPI,DE-THERMAL,
-        "output_video_device_name"          : "DE-CAM2"
+        "source_video_device_name"          : "C270 HD WEBCAM",  // DE-RPI,DE-THERMAL,
+        "output_video_device_name"          : "DE-TRK"
     },
     "tracking": {
         "tracker_algorithm_index": 7,
@@ -35,6 +35,6 @@
     // Advanced Parameters:
     "advanced_tracking": {
         "frames_to_skip_between_messages": 15, //optional default: 15
-        "frame_to_skip_between_track_process": 5 //optional default: 5
+        "frame_to_skip_between_track_process": 3 //optional default: 5
     }
 }
