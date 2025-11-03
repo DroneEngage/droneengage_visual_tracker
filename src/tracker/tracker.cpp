@@ -47,7 +47,10 @@ bool CTracker::initTargetVirtualVideoDevice(const std::string &output_video_devi
     cv::Mat frame;
     video_capture >> frame;
     cv::Mat yuv_frame;
-    cv::cvtColor(frame, yuv_frame, cv::COLOR_BGR2YUV_I420);
+    if (!frame.empty())
+    {
+        cv::cvtColor(frame, yuv_frame, cv::COLOR_BGR2YUV_I420);
+    }
 
     // Open the virtual video device
     m_video_fd = open(m_output_video_path.c_str(), O_RDWR | O_NONBLOCK);
