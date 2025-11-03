@@ -61,7 +61,7 @@ bool CTrackerMain::init()
 
         if (camera.contains("source_video_device_name"))
             {
-                const int video_index = CVideo::findVideoDeviceIndex(camera["source_video_device_name"]);
+                const int video_index = CVideo::findVideoDeviceIndex(camera["source_video_device_name"].get<std::string>());
                 if (video_index != -1) 
                 {
                     source_video_device = "/dev/video" + std::to_string(video_index);
@@ -86,7 +86,7 @@ bool CTrackerMain::init()
                 }
                 else
                 {
-                    source_video_device = camera["source_video_device"];
+                    source_video_device = camera["source_video_device"].get<std::string>();
 
                     std::cout << _LOG_CONSOLE_BOLD_TEXT << "Using source_video_device:" << _INFO_CONSOLE_BOLD_TEXT << source_video_device 
                             << _NORMAL_CONSOLE_TEXT_
@@ -97,7 +97,7 @@ bool CTrackerMain::init()
             
             if (camera.contains("output_video_device_name"))
             {
-                const int video_index = CVideo::findVideoDeviceIndex(camera["output_video_device_name"]);
+                const int video_index = CVideo::findVideoDeviceIndex(camera["output_video_device_name"].get<std::string>());
                 if (video_index != -1) 
                 {
                     output_video_device = "/dev/video" + std::to_string(video_index);
@@ -119,7 +119,7 @@ bool CTrackerMain::init()
                 }
                 else
                 {
-                    output_video_device = camera["output_video_device"];
+                    output_video_device = camera["output_video_device"].get<std::string>();
 
                     std::cout << _SUCCESS_CONSOLE_BOLD_TEXT_ << "Using output_video_device:" << _INFO_CONSOLE_BOLD_TEXT << output_video_device 
                             <<   _NORMAL_CONSOLE_TEXT_

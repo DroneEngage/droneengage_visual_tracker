@@ -7,6 +7,11 @@
 #include <algorithm>     // For std::remove_if (used for trimming whitespace)
 #include <stdexcept>     // For std::runtime_error
 #include <vector>
+ #include <fcntl.h>
+ #include <unistd.h>
+ #include <sys/ioctl.h>
+ #include <linux/videodev2.h>
+ #include <errno.h>
 
 
 #include "../de_common/helpers/colors.hpp"
@@ -156,7 +161,7 @@ int CVideo::findVideoDeviceIndex(const std::string& targetDeviceName) {
             if (filename.rfind(prefix, 0) == 0 && filename.size() > prefix.size()) {
                 // ... (Device number extraction remains the same)
                 std::string numStr = filename.substr(prefix.size());
-                if (std::all_of(numStr.begin(), numStr.end(), ::isdigit)) {
+                if (std::all_of(numStr.begin(), numStr.end(), [](unsigned char c){ return std::isdigit(c); })) {
                     int deviceNumber = std::stoi(numStr);
                     fs::path deviceDir = "/sys/class/video4linux/" + filename;
 
