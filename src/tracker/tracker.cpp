@@ -167,6 +167,9 @@ bool CTracker::init(const enum ENUM_TRACKER_TYPE tracker_type, const std::string
         exit(1);
     }
 
+    m_frames_to_skip_between_messages = frames_to_skip_between_messages;
+    m_frame_to_skip_between_track_process = frame_to_skip_between_track_process;
+
     m_camera_forward = camera_forward;
     m_camera_orientation = camera_orientation;
     
@@ -440,7 +443,7 @@ void CTracker::track2Rect(const float x, const float y, const float w, const flo
         // --- Tracking Logic ---
         if (m_is_tracking_active_initial)// Use the initial tracking state
         {
-            const bool should_skip_track_process = (frame_counter % FRAMES_TO_SKIP_BETWEEN_TRACK_PROCESS) != 0;
+            const bool should_skip_track_process = (frame_counter % m_frame_to_skip_between_track_process) != 0;
 
             // --- REFINED: Update tracking status only when processed ---
             if (!should_skip_track_process) {
@@ -463,7 +466,7 @@ void CTracker::track2Rect(const float x, const float y, const float w, const flo
                 if (m_islegacy) cv::rectangle(frame, bbox_2d, cv::Scalar(0, 0, 200), 2, 1);
                 else cv::rectangle(frame, bbox, cv::Scalar(0, 0, 200), 2, 1);
                 
-                const bool should_skip_message = (frame_counter % FRAMES_TO_SKIP_BETWEEN_MESSAGES) != 0;
+                const bool should_skip_message = (frame_counter % m_frames_to_skip_between_messages) != 0;
                 if (!should_skip_message && m_callback_tracker)
                 {
                     if (m_islegacy) {
