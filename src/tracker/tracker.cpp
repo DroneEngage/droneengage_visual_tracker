@@ -92,7 +92,8 @@ bool CTracker::initTargetVirtualVideoDevice(const std::string &output_video_devi
 
 bool CTracker::init(const enum ENUM_TRACKER_TYPE tracker_type, const std::string& video_path
     , const uint16_t camera_orientation, const bool camera_forward, const std::string& output_video_device
-    , uint16_t frames_to_skip_between_messages, uint16_t frame_to_skip_between_track_process)
+    , uint16_t frames_to_skip_between_messages, uint16_t frame_to_skip_between_track_process
+    , int desired_input_width, int desired_input_height)
 {
 
     // Enable OpenCV OpenCL acceleration if available for operations like cvtColor
@@ -170,9 +171,12 @@ bool CTracker::init(const enum ENUM_TRACKER_TYPE tracker_type, const std::string
     }
 
     // Set camera properties once after opening.
-    // Error checking for `set` calls is good practice, though not strictly required if non-critical.
-    // video_capture.set(cv::CAP_PROP_FRAME_WIDTH, 800);
-    // video_capture.set(cv::CAP_PROP_FRAME_HEIGHT, 600);
+    // Apply desired resolution if provided (>0), then FPS and FOURCC.
+    if (desired_input_width > 0 && desired_input_height > 0)
+    {
+        video_capture.set(cv::CAP_PROP_FRAME_WIDTH, desired_input_width);
+        video_capture.set(cv::CAP_PROP_FRAME_HEIGHT, desired_input_height);
+    }
     video_capture.set(cv::CAP_PROP_FPS, 30);
     video_capture.set(cv::CAP_PROP_FOURCC, cv::VideoWriter::fourcc('M', 'J', 'P', 'G'));
     
@@ -191,8 +195,7 @@ bool CTracker::init(const enum ENUM_TRACKER_TYPE tracker_type, const std::string
 
     std::cout << _SUCCESS_CONSOLE_BOLD_TEXT_ << "Video Capture:" << _LOG_CONSOLE_BOLD_TEXT << video_path << _NORMAL_CONSOLE_TEXT_ << std::endl;
    
-    // Read the first frame to get its actual width and height
-    
+    // Ensure FOURCC is set (some drivers require set after open and before reads)
     video_capture.set(cv::CAP_PROP_FOURCC, cv::VideoWriter::fourcc('M', 'J', 'P', 'G'));
 
 

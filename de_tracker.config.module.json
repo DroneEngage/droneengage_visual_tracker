@@ -25,7 +25,9 @@
         //"source_video_device"               : "/dev/video2",
         //"output_video_device": "/dev/video3"
         "source_video_device_name"          : "C270 HD WEBCAM",  // DE-RPI,DE-THERMAL,
-        "output_video_device_name"          : "DE-TRK"
+        "output_video_device_name"          : "DE-TRK",
+        "desired_input_width"               : 1280,
+        "desired_input_height"              : 720
     },
     "tracking": {
         "tracker_algorithm_index": 7,
