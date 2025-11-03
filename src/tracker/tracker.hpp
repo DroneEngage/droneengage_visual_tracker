@@ -87,7 +87,8 @@ namespace tracker
         public:
             bool init (const enum ENUM_TRACKER_TYPE tracker_type, const std::string& video_path
                 , const uint16_t camera_orientation , const bool camera_forward, const std::string& output_video_device
-                , uint16_t frames_to_skip_between_messages, uint16_t frame_to_skip_between_track_process);
+                , uint16_t frames_to_skip_between_messages, uint16_t frame_to_skip_between_track_process
+                , int desired_input_width = 0, int desired_input_height = 0);
             bool uninit();
             void track(const float x, const float y, const float radius);
             void trackRect(const float x, const float y, const float w, const float h);

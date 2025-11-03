@@ -52,6 +52,8 @@ bool CTrackerMain::init()
 
     std::string source_video_device = "";
     std::string output_video_device = "";
+    int desired_input_width = 0;
+    int desired_input_height = 0;
 
     if (m_jsonConfig.contains("camera"))
     {
@@ -68,6 +70,19 @@ bool CTrackerMain::init()
                             << _NORMAL_CONSOLE_TEXT_
                             << std::endl;
                 }
+
+                // Optional desired input resolution
+                if (camera.contains("desired_input_width") && camera.contains("desired_input_height"))
+                {
+                    desired_input_width = camera["desired_input_width"].get<int>();
+                    desired_input_height = camera["desired_input_height"].get<int>();
+                    if (desired_input_width < 0 || desired_input_height < 0)
+                    {
+                        desired_input_width = 0;
+                        desired_input_height = 0;
+                    }
+                }
+            
             }
 
             if (source_video_device.empty())
@@ -170,7 +185,8 @@ bool CTrackerMain::init()
 
     bool res = m_tracker.get()->init(tracker_algorithm_index, source_video_device
         , camera_orientation, camera_forward, output_video_device
-        , frames_to_skip_between_messages, frame_to_skip_between_track_process) ;
+        , frames_to_skip_between_messages, frame_to_skip_between_track_process
+        , desired_input_width, desired_input_height) ;
     if (res == false)
     {
         std::cout << _ERROR_CONSOLE_BOLD_TEXT_ << "FATAL ERROR:" << _INFO_CONSOLE_TEXT << " Failed to initialize tracker. " <<  _NORMAL_CONSOLE_TEXT_ << std::endl;
