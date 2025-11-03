@@ -64,7 +64,7 @@ bool CTrackerMain::init()
                 {
                     source_video_device = "/dev/video" + std::to_string(video_index);
 
-                    std::cout << _SUCCESS_CONSOLE_BOLD_TEXT_ << "Using source_video_device_name:" << _INFO_CONSOLE_BOLD_TEXT << source_video_device 
+                    std::cout << _LOG_CONSOLE_BOLD_TEXT << "Using source_video_device_name:" << _INFO_CONSOLE_BOLD_TEXT << source_video_device 
                             << _NORMAL_CONSOLE_TEXT_
                             << std::endl;
                 }
@@ -84,7 +84,7 @@ bool CTrackerMain::init()
                 {
                     source_video_device = camera["source_video_device"];
 
-                    std::cout << _SUCCESS_CONSOLE_BOLD_TEXT_ << "Using source_video_device:" << _INFO_CONSOLE_BOLD_TEXT << source_video_device 
+                    std::cout << _LOG_CONSOLE_BOLD_TEXT << "Using source_video_device:" << _INFO_CONSOLE_BOLD_TEXT << source_video_device 
                             << _NORMAL_CONSOLE_TEXT_
                             << std::endl;
                 }
