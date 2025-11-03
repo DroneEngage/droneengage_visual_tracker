@@ -102,7 +102,7 @@ namespace tracker
             int m_tracker_status = TrackingTarget_STATUS_TRACKING_STOPPED;
             int m_ai_tracker_status = TrackingTarget_STATUS_AI_Recognition_DISABLED;
             
-            bool m_exit_thread;
+            bool m_exit_thread = true;
             
             std::unique_ptr<de::tracker::CTracker> m_tracker;
             de::tracker::CTracker_Facade& m_trackerFacade = de::tracker::CTracker_Facade::getInstance();
