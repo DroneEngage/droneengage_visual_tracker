@@ -79,7 +79,7 @@ void _versionOnly (void)
  */
 void _version (void)
 {
-    std::cout << std::endl << _SUCCESS_CONSOLE_BOLD_TEXT_ "Drone-Engage Visual Tracker Module " << _INFO_CONSOLE_TEXT << "version " << version_string << _NORMAL_CONSOLE_TEXT_ << std::endl;
+    std::cout << std::endl << _SUCCESS_CONSOLE_BOLD_TEXT_ << "Drone-Engage Visual Tracker Module " << _INFO_CONSOLE_TEXT << "version " << version_string << _NORMAL_CONSOLE_TEXT_ << std::endl;
 }
 
 
@@ -90,7 +90,7 @@ void _version (void)
 void _displaySerial (void)
 {
     _version ();
-    std::cout << std::endl << _INFO_CONSOLE_TEXT "Serial Number: " << _TEXT_BOLD_HIGHTLITED_ << hardware_serial << _NORMAL_CONSOLE_TEXT_ << std::endl;
+    std::cout << std::endl << _INFO_CONSOLE_TEXT << "Serial Number: " << _TEXT_BOLD_HIGHTLITED_ << hardware_serial << _NORMAL_CONSOLE_TEXT_ << std::endl;
     
 }
 
@@ -102,14 +102,14 @@ void _displaySerial (void)
 void _usage(void)
 {
    _version ();
-    std::cout << std::endl << _INFO_CONSOLE_TEXT "Options" << _NORMAL_CONSOLE_TEXT_ << std::endl;
-    std::cout << std::endl << _INFO_CONSOLE_TEXT "\t--serial:          display serial number needed for registration" << _NORMAL_CONSOLE_TEXT_ << std::ends;
-    std::cout << std::endl << _INFO_CONSOLE_TEXT "\t                   -s " << _NORMAL_CONSOLE_TEXT_ << std::ends;
-    std::cout << std::endl << _INFO_CONSOLE_TEXT "\t--config:          name and path of configuration file. default [" << configName << "]" << _NORMAL_CONSOLE_TEXT_ << std::ends;
-    std::cout << std::endl << _INFO_CONSOLE_TEXT "\t                   -c ./config.json" << _NORMAL_CONSOLE_TEXT_ << std::ends;
-    std::cout << std::endl << _INFO_CONSOLE_TEXT "\t--bconfig:          name and path of configuration file. default [" << localConfigName << "]" << _NORMAL_CONSOLE_TEXT_ << std::ends;
-    std::cout << std::endl << _INFO_CONSOLE_TEXT "\t                   -b ./config.local" << _NORMAL_CONSOLE_TEXT_ << std::ends;
-    std::cout << std::endl << _INFO_CONSOLE_TEXT "\t--version:         -v" << _NORMAL_CONSOLE_TEXT_ << std::endl;
+    std::cout << std::endl << _INFO_CONSOLE_TEXT << "Options" << _NORMAL_CONSOLE_TEXT_ << std::endl;
+    std::cout << std::endl << _INFO_CONSOLE_TEXT << "\t--serial:          display serial number needed for registration" << _NORMAL_CONSOLE_TEXT_ << std::ends;
+    std::cout << std::endl << _INFO_CONSOLE_TEXT << "\t                   -s " << _NORMAL_CONSOLE_TEXT_ << std::ends;
+    std::cout << std::endl << _INFO_CONSOLE_TEXT << "\t--config:          name and path of configuration file. default [" << configName << "]" << _NORMAL_CONSOLE_TEXT_ << std::ends;
+    std::cout << std::endl << _INFO_CONSOLE_TEXT << "\t                   -c ./config.json" << _NORMAL_CONSOLE_TEXT_ << std::ends;
+    std::cout << std::endl << _INFO_CONSOLE_TEXT << "\t--bconfig:          name and path of configuration file. default [" << localConfigName << "]" << _NORMAL_CONSOLE_TEXT_ << std::ends;
+    std::cout << std::endl << _INFO_CONSOLE_TEXT << "\t                   -b ./config.local" << _NORMAL_CONSOLE_TEXT_ << std::ends;
+    std::cout << std::endl << _INFO_CONSOLE_TEXT << "\t--version:         -v" << _NORMAL_CONSOLE_TEXT_ << std::endl;
 }
 
 

@@ -1,3 +1,4 @@
+#include <errno.h>
 #include <chrono> // For high-resolution timing
 #include <thread> // For std::this_thread::sleep_for
 #include <algorithm> // For std::clamp
