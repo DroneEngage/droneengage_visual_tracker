@@ -171,9 +171,9 @@ namespace tracker
 
             uint32_t m_target_fps = 30; 
 
-            BUFFER * m_buffers;
-            unsigned int m_buffer_count;
-            unsigned int m_current_buffer_index;
+            BUFFER * m_buffers = nullptr;
+            unsigned int m_buffer_count = 0;
+            unsigned int m_current_buffer_index = 0;
 
 
             uint16_t m_frames_to_skip_between_messages  = FRAMES_TO_SKIP_BETWEEN_MESSAGES;
