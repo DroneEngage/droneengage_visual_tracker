@@ -71,18 +71,7 @@ bool CTrackerMain::init()
                             << std::endl;
                 }
 
-                // Optional desired input resolution
-                if (camera.contains("desired_input_width") && camera.contains("desired_input_height"))
-                {
-                    desired_input_width = camera["desired_input_width"].get<int>();
-                    desired_input_height = camera["desired_input_height"].get<int>();
-                    if (desired_input_width < 0 || desired_input_height < 0)
-                    {
-                        desired_input_width = 0;
-                        desired_input_height = 0;
-                    }
-                }
-            
+          
             }
 
             if (source_video_device.empty())
@@ -137,6 +126,31 @@ bool CTrackerMain::init()
                             << std::endl;
                 }
             }
+
+
+            // Optional desired input resolution
+                if (camera.contains("desired_input_width") && camera.contains("desired_input_height"))
+                {
+                    desired_input_width = camera["desired_input_width"].get<int>();
+                    desired_input_height = camera["desired_input_height"].get<int>();
+                    if (desired_input_width < 0 || desired_input_height < 0)
+                    {
+                        desired_input_width = 0;
+                        desired_input_height = 0;
+                    }
+                }
+
+
+                // If desired size not provided, display max available video size
+                if (desired_input_width == 0 && desired_input_height == 0 && !source_video_device.empty())
+                {
+                    unsigned int max_w = 0, max_h = 0;
+                    if (CVideo::getMaxSupportedResolution(source_video_device, max_w, max_h))
+                    {
+                        std::cout << _SUCCESS_CONSOLE_BOLD_TEXT_ << "Camera max supported resolution: "
+                                << _INFO_CONSOLE_TEXT << max_w << "x" << max_h << _NORMAL_CONSOLE_TEXT_ << std::endl;
+                    }
+                }
     }
     else
     {

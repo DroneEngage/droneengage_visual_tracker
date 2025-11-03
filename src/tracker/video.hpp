@@ -38,6 +38,7 @@ class CVideo
         }
 
         static bool getVideoResolution(const std::string& video_device_path, unsigned int& width, unsigned int& height);
+        static bool getMaxSupportedResolution(const std::string& video_device_path, unsigned int& max_width, unsigned int& max_height);
 
         static int findVideoDeviceIndex(const std::string& targetDeviceName);
 

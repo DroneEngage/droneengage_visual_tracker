@@ -39,7 +39,7 @@ bool CVideo::getVideoResolution (const std::string& video_device_path, unsigned 
 
     // Check if the path looks like a V4L2 device
     if (video_device_path.rfind("/dev/video", 0) != 0) {
-        std::cout << _ERROR_CONSOLE_BOLD_TEXT_ "Error: " << _ERROR_CONSOLE_BOLD_TEXT_ << video_device_path << _NORMAL_CONSOLE_TEXT_ << " does not appear to be a V4L2 device path (does not start with /dev/video)." << _NORMAL_CONSOLE_TEXT_ << std::endl;
+        std::cout << _ERROR_CONSOLE_BOLD_TEXT_ << "Error: " << _ERROR_CONSOLE_BOLD_TEXT_ << video_device_path << _NORMAL_CONSOLE_TEXT_ << " does not appear to be a V4L2 device path (does not start with /dev/video)." << _NORMAL_CONSOLE_TEXT_ << std::endl;
         return false;
     }
 
@@ -65,6 +65,57 @@ bool CVideo::getVideoResolution (const std::string& video_device_path, unsigned 
         close(fd);
         return false;
     }   
+}
+
+bool CVideo::getMaxSupportedResolution(const std::string& video_device_path, unsigned int& max_width, unsigned int& max_height)
+{
+    max_width = 0;
+    max_height = 0;
+
+    if (video_device_path.rfind("/dev/video", 0) != 0) {
+        std::cout << _ERROR_CONSOLE_BOLD_TEXT_ << "Error: " << _ERROR_CONSOLE_BOLD_TEXT_ << video_device_path << _NORMAL_CONSOLE_TEXT_ << " is not a V4L2 device path." << _NORMAL_CONSOLE_TEXT_ << std::endl;
+        return false;
+    }
+
+    int fd = open(video_device_path.c_str(), O_RDONLY | O_NONBLOCK);
+    if (fd < 0) {
+        std::cout << _ERROR_CONSOLE_TEXT_ << "Error: Failed to open V4L2 device " << _ERROR_CONSOLE_BOLD_TEXT_ << video_device_path << _NORMAL_CONSOLE_TEXT_ <<  ": " << strerror(errno) << _NORMAL_CONSOLE_TEXT_ << std::endl;
+        return false;
+    }
+
+    struct v4l2_fmtdesc fmtdesc = {};
+    fmtdesc.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+    for (fmtdesc.index = 0; xioctl(fd, VIDIOC_ENUM_FMT, &fmtdesc) == 0; ++fmtdesc.index)
+    {
+        struct v4l2_frmsizeenum frmsize = {};
+        frmsize.pixel_format = fmtdesc.pixelformat;
+        for (frmsize.index = 0; xioctl(fd, VIDIOC_ENUM_FRAMESIZES, &frmsize) == 0; ++frmsize.index)
+        {
+            if (frmsize.type == V4L2_FRMSIZE_TYPE_DISCRETE)
+            {
+                max_width = std::max(max_width, frmsize.discrete.width);
+                max_height = std::max(max_height, frmsize.discrete.height);
+            }
+            else if (frmsize.type == V4L2_FRMSIZE_TYPE_STEPWISE || frmsize.type == V4L2_FRMSIZE_TYPE_CONTINUOUS)
+            {
+                max_width = std::max(max_width, frmsize.stepwise.max_width);
+                max_height = std::max(max_height, frmsize.stepwise.max_height);
+            }
+        }
+    }
+
+    close(fd);
+
+    if (max_width == 0 || max_height == 0)
+    {
+        std::cout << _ERROR_CONSOLE_TEXT_ << "Warning: Could not enumerate max resolution for " << video_device_path << _NORMAL_CONSOLE_TEXT_ << std::endl;
+        return false;
+    }
+
+    std::cout << _SUCCESS_CONSOLE_TEXT_ << "Max supported resolution for " << _LOG_CONSOLE_BOLD_TEXT << video_device_path
+              << _SUCCESS_CONSOLE_TEXT_ << ": " << _LOG_CONSOLE_BOLD_TEXT << max_width << _INFO_CONSOLE_TEXT << "x" << _LOG_CONSOLE_BOLD_TEXT << max_height
+              << _NORMAL_CONSOLE_TEXT_ << std::endl;
+    return true;
 }
 
 
