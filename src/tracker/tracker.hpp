@@ -107,12 +107,12 @@ namespace tracker
 
         public:
 
-            inline const uint16_t isCameraForward()
+            inline const bool isCameraForward()
             {
                 return m_camera_forward;
             }
 
-            inline const bool getCameraOrientation()
+            inline const uint16_t getCameraOrientation()
             {
                 return m_camera_orientation;
             }
@@ -174,6 +174,9 @@ namespace tracker
             BUFFER * m_buffers = nullptr;
             unsigned int m_buffer_count = 0;
             unsigned int m_current_buffer_index = 0;
+
+            // Per-instance tracking thread
+            std::thread m_framesThread;
 
 
             uint16_t m_frames_to_skip_between_messages  = FRAMES_TO_SKIP_BETWEEN_MESSAGES;

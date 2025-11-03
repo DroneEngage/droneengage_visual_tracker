@@ -1,5 +1,6 @@
 #include <chrono> // For high-resolution timing
 #include <thread> // For std::this_thread::sleep_for
+#include <algorithm> // For std::clamp
 #include <sys/mman.h>  // For mmap, munmap, PROT_READ, PROT_WRITE, MAP_SHARED, MAP_FAILED
 #include <opencv2/opencv.hpp>
 #include <opencv2/tracking.hpp>
@@ -18,7 +19,7 @@
 #include "../de_common/de_databus/messages.hpp"
 using namespace de::tracker;
 
-std::thread m_framesThread;
+
 
 
 
@@ -100,7 +101,7 @@ bool CTracker::init(const enum ENUM_TRACKER_TYPE tracker_type, const std::string
     if (frames_to_skip_between_messages < frame_to_skip_between_track_process)
     {
         std::cout << _ERROR_CONSOLE_BOLD_TEXT_ << "FATAL ERROR:" << _INFO_CONSOLE_TEXT << " frames_to_skip_between_messages should be larger than frame_to_skip_between_track_process. " <<  _NORMAL_CONSOLE_TEXT_ << std::endl;
-        exit(1);
+        return false;
     }
 
     m_frames_to_skip_between_messages = frames_to_skip_between_messages;
@@ -182,7 +183,7 @@ bool CTracker::init(const enum ENUM_TRACKER_TYPE tracker_type, const std::string
     if (m_image_width == 0 || m_image_height == 0) {
         std::cerr << _ERROR_CONSOLE_BOLD_TEXT_ << "Error: Failed to get camera resolution from " << video_path << _NORMAL_CONSOLE_TEXT_ << std::endl;
         video_capture.release();
-        return 1;
+        return false;
     }
 
     
@@ -237,8 +238,19 @@ void CTracker::destroyVirtualVideoDevice()
 bool CTracker::uninit()
 {
     stop();
-    
-    
+
+    // Release input capture safely
+    if (video_capture.isOpened())
+    {
+        video_capture.release();
+    }
+
+    // Close and cleanup virtual output device if opened
+    if (m_virtual_device_opened || m_video_fd != -1 || m_buffers != nullptr)
+    {
+        destroyVirtualVideoDevice();
+    }
+
     return true;
 }
 
@@ -385,6 +397,7 @@ void CTracker::track2Rect(const float x, const float y, const float w, const flo
             if (!should_skip_track_process) {
                 
                 track_success = m_islegacy ? m_legacy_tracker->update(frame, bbox_2d) : m_tracker->update(frame, bbox);
+                m_valid_track = track_success;
                 
                 // Report status change immediately after an update attempt
                 if (m_callback_tracker) {
@@ -419,6 +432,7 @@ void CTracker::track2Rect(const float x, const float y, const float w, const flo
             else
             {
                 cv::putText(frame, "Tracking failure detected", cv::Point(100, 80), cv::FONT_HERSHEY_SIMPLEX, 0.75, cv::Scalar(0, 0, 255), 2);
+                m_valid_track = false;
             }
              // Always draw crosshair if tracking was started
             cv::line(frame, cv::Point(center_x - cross_arm_length, center_y), cv::Point(center_x + cross_arm_length, center_y), cv::Scalar(0, 255, 0), 2);
@@ -493,8 +507,10 @@ void CTracker::track2Rect(const float x, const float y, const float w, const flo
         
         if (elapsed_time < target_frame_time_ms)
         {
+            auto sleep_for = (target_frame_time_ms - elapsed_time);
+            std::this_thread::sleep_for(sleep_for);
             #ifdef DDEBUG
-                        std::cout << "Elapsed: " << elapsed_time.count() << "ms, Sleeping for: " << target_frame_time_ms.count() - elapsed_time.count() << "ms" << std::endl;
+                        std::cout << "Elapsed: " << elapsed_time.count() << "ms, Sleeping for: " << sleep_for.count() << "ms" << std::endl;
             #endif
         }
         #ifdef DDEBUG

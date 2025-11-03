@@ -163,7 +163,7 @@ bool CTrackerMain::init()
     
     
 
-    m_tracker = std::make_unique<CTracker>(CTracker(this));
+    m_tracker = std::make_unique<CTracker>(this);
     
 
     
