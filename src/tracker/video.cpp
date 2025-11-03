@@ -7,7 +7,7 @@
 #include <filesystem>    // For directory iteration and path manipulation (C++17+)
 #include <algorithm>     // For std::remove_if (used for trimming whitespace)
 #include <stdexcept>     // For std::runtime_error
-
+#include <vector>
 
 
 #include "../de_common/helpers/colors.hpp"
@@ -86,72 +86,66 @@ std::string CVideo::trim(const std::string& str) {
  * reads the 'name' or 'card' file within each, and compares it to the
  * provided target device name.
  *
+ * In the Video4Linux API, when multiple nodes exist for a single camera, the primary capture device is almost always the one with the lowest device index (e.g., video0). The higher-numbered node (e.g., video6) is often for metadata or a secondary, non-video-capture function
+ *
  * @param targetDeviceName The name of the video device to search for.
  * @return The integer index of the device (e.g., 0 for /dev/video0),
  * or -1 if the device is not found.
  */
 int CVideo::findVideoDeviceIndex(const std::string& targetDeviceName) {
-    std::cout << _LOG_CONSOLE_BOLD_TEXT << ".... Searching for virtual camera: " << targetDeviceName  << _NORMAL_CONSOLE_TEXT_ << std::endl;
+    std::cout << _LOG_CONSOLE_BOLD_TEXT << ".... Searching for video device: " << _INFO_CONSOLE_BOLD_TEXT << targetDeviceName << _NORMAL_CONSOLE_TEXT_ << std::endl;
 
-    // Define the base path where video4linux devices are listed in sysfs
-    fs::path sysfsPath("/sys/devices/virtual/video4linux/");
-
-    // Check if the directory exists and is accessible
-    if (!fs::exists(sysfsPath) || !fs::is_directory(sysfsPath)) {
-        std::cerr << _ERROR_CONSOLE_BOLD_TEXT_ << "Error: " << sysfsPath << " does not exist or is not a directory." << _NORMAL_CONSOLE_TEXT_ << std::endl;
-        return -1;
-    }
+    const std::string prefix = "video";
+    std::vector<int> matchingDeviceNumbers;
 
     try {
-        // Iterate through all entries in the video4linux directory
-        for (const auto& entry : fs::directory_iterator(sysfsPath)) {
-            // Check if the current entry is a directory and its name starts with "video"
-            if (entry.is_directory() && entry.path().filename().string().rfind("video", 0) == 0) {
-                std::string currentCardLabel;
-                fs::path deviceDir = entry.path(); // Get the path to the videoX directory
+        for (const auto& entry : fs::directory_iterator("/dev")) {
+            const std::string filename = entry.path().filename().string();
 
-                // Try to read 'name' file first (more common on recent kernels for v4l2loopback)
-                fs::path nameFilePath = deviceDir / "name";
-                std::ifstream nameFile(nameFilePath);
-                if (nameFile.is_open()) {
-                    std::getline(nameFile, currentCardLabel);
-                    nameFile.close();
-                } else {
-                    // Fallback to 'card' file for older kernels
-                    fs::path cardFilePath = deviceDir / "card";
-                    std::ifstream cardFile(cardFilePath);
-                    if (cardFile.is_open()) {
-                        std::getline(cardFile, currentCardLabel);
-                        cardFile.close();
+            // Match /dev/videoX pattern
+            if (filename.rfind(prefix, 0) == 0 && filename.size() > prefix.size()) {
+                // ... (Device number extraction remains the same)
+                std::string numStr = filename.substr(prefix.size());
+                if (std::all_of(numStr.begin(), numStr.end(), ::isdigit)) {
+                    int deviceNumber = std::stoi(numStr);
+                    fs::path deviceDir = "/sys/class/video4linux/" + filename;
+
+                    if (!fs::exists(deviceDir)) continue;
+
+                    std::string currentCardLabel;
+                    // ... (Logic to read 'name' or 'card' remains the same)
+                    fs::path nameFilePath = deviceDir / "name";
+                    std::ifstream nameFile(nameFilePath);
+                    if (nameFile.is_open()) {
+                        std::getline(nameFile, currentCardLabel);
+                        nameFile.close();
+                    } else {
+                        fs::path cardFilePath = deviceDir / "card";
+                        std::ifstream cardFile(cardFilePath);
+                        if (cardFile.is_open()) {
+                            std::getline(cardFile, currentCardLabel);
+                            cardFile.close();
+                        }
                     }
-                }
-
-                // Debugging: Uncomment the line below to see all device labels being checked
-                // std::cout << "Checking device " << deviceDir.filename().string()
-                //           << " with label: '" << currentCardLabel << "'" << std::endl;
-
-                // Check if the current device's label matches our target, ignoring leading/trailing whitespace
-                if (trim(currentCardLabel) == trim(targetDeviceName)) {
-                    // Extract the device number from the directory name (e.g., "video0" -> "0")
-                    std::string deviceNumberStr = deviceDir.filename().string().substr(5); // Remove "video" prefix
-                    try {
-                        int deviceNumber = std::stoi(deviceNumberStr); // Convert string to integer
-                        std::cout << _SUCCESS_CONSOLE_BOLD_TEXT_ << ".... Found target device: /dev/video" << deviceNumber  << _NORMAL_CONSOLE_TEXT_ << std::endl;
-                        return deviceNumber; // Found our target, return the index
-                    } catch (const std::invalid_argument& e) {
-                        std::cerr << _ERROR_CONSOLE_BOLD_TEXT_ << "Error: Could not convert '" << deviceNumberStr << "' to integer: " << e.what() << _NORMAL_CONSOLE_TEXT_ << std::endl;
-                    } catch (const std::out_of_range& e) {
-                        std::cerr << _ERROR_CONSOLE_BOLD_TEXT_ << "Error: Device number '" << deviceNumberStr << "' out of range: " << e.what() << _NORMAL_CONSOLE_TEXT_ << std::endl;
+                    
+                    if (trim(currentCardLabel) == trim(targetDeviceName)) {
+                        matchingDeviceNumbers.push_back(deviceNumber);
                     }
                 }
             }
         }
     } catch (const fs::filesystem_error& e) {
-        // Catch filesystem-related errors
-        std::cerr << "Filesystem error: " << e.what() << std::endl;
+        std::cerr << _ERROR_CONSOLE_BOLD_TEXT_ << "Filesystem error: " << e.what() << _NORMAL_CONSOLE_TEXT_ << std::endl;
         return -1;
     }
 
-    std::cout << "Virtual camera '" << targetDeviceName << "' not found." << std::endl;
-    return -1; // Device not found
+    // After iterating through all devices, select the lowest index
+    if (!matchingDeviceNumbers.empty()) {
+        int lowestIndex = *std::min_element(matchingDeviceNumbers.begin(), matchingDeviceNumbers.end());
+        std::cout << _SUCCESS_CONSOLE_BOLD_TEXT_ << ".... Found primary device: " << _INFO_CONSOLE_BOLD_TEXT << "/dev/video" << lowestIndex << _NORMAL_CONSOLE_TEXT_ << std::endl;
+        return lowestIndex;
+    }
+
+    std::cout << "Device '" << targetDeviceName << "' not found." << std::endl;
+    return -1;
 }
