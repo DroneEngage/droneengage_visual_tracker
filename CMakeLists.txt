@@ -28,7 +28,7 @@ message( FATAL_ERROR “In-source builds not allowed! Create a build directory a
 exit(1)
 endif()
 
-SET (__APP__VERSION__ "1.2.2")
+SET (__APP__VERSION__ "1.3.0")
 add_definitions( -D__APP__VERSION__="${__APP__VERSION__}")
 project(DE_TRACKER VERSION ${__APP__VERSION__})
 
