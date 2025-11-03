@@ -73,81 +73,17 @@ bool CTracker::initTargetVirtualVideoDevice(const std::string &output_video_devi
     {
         std::cerr << _ERROR_CONSOLE_BOLD_TEXT_ << "Failed to set video format on " << _INFO_CONSOLE_BOLD_TEXT << m_output_video_path << " " << strerror(errno) << _NORMAL_CONSOLE_TEXT_ << std::endl;
         close(m_video_fd);
-        video_capture.release();
         return false;
     }
 
     std::cout << _SUCCESS_CONSOLE_BOLD_TEXT_<< "Successfully set format for " << m_output_video_path << ":" << _INFO_CONSOLE_BOLD_TEXT << fmt.fmt.pix.width << _LOG_CONSOLE_BOLD_TEXT << "x" << _INFO_CONSOLE_BOLD_TEXT << fmt.fmt.pix.height << _LOG_CONSOLE_BOLD_TEXT << " pixformat YUV420" << _NORMAL_CONSOLE_TEXT_ <<  std::endl;
 
 
-    // Request buffers for memory mapping
-    struct v4l2_requestbuffers req = {0};
-    req.count = 4;
-    req.type = V4L2_BUF_TYPE_VIDEO_OUTPUT;
-    req.memory = V4L2_MEMORY_MMAP;
+    // We are using the simple non-blocking write() path for streaming.
+    // No need to request or mmap V4L2 buffers in this mode.
 
-    if (CVideo::xioctl(m_video_fd, VIDIOC_REQBUFS, &req) < 0)
-    {
-        std::cerr << _ERROR_CONSOLE_BOLD_TEXT_ << "Failed to request buffers on " << _INFO_CONSOLE_BOLD_TEXT << m_output_video_path << ": " << strerror(errno) << _NORMAL_CONSOLE_TEXT_ << std::endl;
-        close(m_video_fd);
-        video_capture.release();
-        return false;
-    }
-
-    if (req.count < 2)
-    {
-        std::cerr << _ERROR_CONSOLE_BOLD_TEXT_ << "Insufficient buffer memory on " << _INFO_CONSOLE_BOLD_TEXT << m_output_video_path << _NORMAL_CONSOLE_TEXT_ << std::endl;
-        close(m_video_fd);
-        video_capture.release();
-        return false;
-    }
-
-    // Map the buffers
-    m_buffers = new (std::nothrow) buffer[req.count];
-    
-    if (!m_buffers) {
-        std::cerr << _ERROR_CONSOLE_BOLD_TEXT_ << "Error: Failed to allocate memory for V4L2 buffers." << _NORMAL_CONSOLE_TEXT_ << std::endl;
-        close(m_video_fd);
-        m_video_fd = -1;
-        return false;
-    }
-
-    for (unsigned int i = 0; i < req.count; ++i)
-    {
-        m_buffers[i].start = nullptr; // Initialize to nullptr
-        m_buffers[i].length = 0;      // Initialize to 0
-
-        struct v4l2_buffer buf = {0};
-        buf.type = V4L2_BUF_TYPE_VIDEO_OUTPUT;
-        buf.memory = V4L2_MEMORY_MMAP;
-        buf.index = i;
-
-        if (CVideo::xioctl(m_video_fd, VIDIOC_QUERYBUF, &buf) < 0)
-        {
-            std::cerr << _ERROR_CONSOLE_BOLD_TEXT_ << "Failed to query buffer " << i << " on " <<  _INFO_CONSOLE_BOLD_TEXT << m_output_video_path << ": " << strerror(errno) << _NORMAL_CONSOLE_TEXT_ << std::endl;
-            close(m_video_fd);
-            video_capture.release();
-            return false;
-        }
-
-        m_buffers[i].length = buf.length;
-        m_buffers[i].start = mmap(NULL, buf.length,
-                                 PROT_READ | PROT_WRITE,
-                                 MAP_SHARED,
-                                 m_video_fd, buf.m.offset);
-
-        if (m_buffers[i].start == MAP_FAILED)
-        {
-            std::cerr << _ERROR_CONSOLE_BOLD_TEXT_ << "Failed to query buffer " << i << " on " <<  _INFO_CONSOLE_BOLD_TEXT << m_output_video_path << ": " << strerror(errno) << _NORMAL_CONSOLE_TEXT_ << std::endl;
-            close(m_video_fd);
-            video_capture.release();
-            return false;
-        }
-    }
-
+    // Compute YUV frame size for I420
     m_yuv_frame_size = m_image_width * m_image_height * 3 / 2;
-    m_buffer_count = req.count;
-    m_current_buffer_index = 0;
 
     m_virtual_device_opened = true;
     return true;
