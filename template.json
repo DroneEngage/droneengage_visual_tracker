@@ -1,6 +1,6 @@
 [
     {
-        "name": "Camera Settings",
+        "name": "Tracking Camera Settings",
         "template": {
             "Camera": {
                 "fieldName": "camera",
@@ -71,6 +71,33 @@
                         "defaultvalue": false,
                         "optional": true,
                         "desc": "unchecked-horizontal / checked-vertical"
+                    }
+                }
+            }
+        }
+    },
+    {
+        "name": "Advanced Settings",
+        "template": {
+            "Advanced Settings": {
+                "fieldName": "advanced_tracking",
+                "type": "object",
+                "fields": {
+                    "frames to skip between messages": {
+                        "fieldName": "frames_to_skip_between_messages",
+                        "order":1,
+                        "type": "number",
+                        "defaultvalue": 15,
+                        "optional": false,
+                        "desc": "frames to skip between messages"
+                    },
+                    "frame to skip between track process": {
+                        "fieldName": "frame_to_skip_between_track_process",
+                        "order":2,
+                        "type": "number",
+                        "defaultvalue": 3,
+                        "optional": false,
+                        "desc": "frame to skip between track process"
                     }
                 }
             }
