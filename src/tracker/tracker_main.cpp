@@ -26,7 +26,7 @@ bool CTrackerMain::init()
     if (!m_jsonConfig.contains("tracking"))
     {
         std::cout << _ERROR_CONSOLE_BOLD_TEXT_ << "FATAL ERROR: " << _INFO_CONSOLE_TEXT << CConfigFile::getInstance().getFileName() 
-                << " does not have field " << _ERROR_CONSOLE_TEXT_ "[tracking]" <<  _NORMAL_CONSOLE_TEXT_ 
+                << " does not have field " << _ERROR_CONSOLE_TEXT_ << "[tracking]" <<  _NORMAL_CONSOLE_TEXT_ 
                 << std::endl;
 	
         return false;
@@ -79,7 +79,7 @@ bool CTrackerMain::init()
                 if (!camera.contains("source_video_device"))
                 {
                     std::cout << _ERROR_CONSOLE_BOLD_TEXT_ << "FATAL ERROR: " << _INFO_CONSOLE_TEXT << CConfigFile::getInstance().getFileName() 
-                            << " does not have field " << _ERROR_CONSOLE_TEXT_ "[source_video_device]" <<  _NORMAL_CONSOLE_TEXT_ 
+                            << " does not have field " << _ERROR_CONSOLE_TEXT_ << "[source_video_device]" <<  _NORMAL_CONSOLE_TEXT_ 
                             << std::endl;
                 
                     return false;
