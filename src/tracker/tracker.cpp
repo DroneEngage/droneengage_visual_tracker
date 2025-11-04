@@ -400,7 +400,7 @@ void CTracker::track2Rect(const float x, const float y, const float w, const flo
         {
             const bool should_skip_track_process = (frame_counter % m_frame_to_skip_between_track_process) != 0;
 
-            // --- REFINED: Update tracking status only when processed ---
+            // Update tracking status only when processed ---
             if (!should_skip_track_process) {
                 
                 track_success = m_islegacy ? m_legacy_tracker->update(frame, bbox_2d) : m_tracker->update(frame, bbox);
@@ -423,16 +423,16 @@ void CTracker::track2Rect(const float x, const float y, const float w, const flo
                 else cv::rectangle(frame, bbox, cv::Scalar(0, 0, 200), 2, 1);
                 
                 const bool should_skip_message = (frame_counter % m_frames_to_skip_between_messages) != 0;
-                if (!should_skip_message && m_callback_tracker)
+                if (!should_skip_track_process  && m_callback_tracker)
                 {
                     if (m_islegacy) {
                         m_callback_tracker->onTrack(revScaleX(bbox_2d.x), revScaleY(bbox_2d.y),
                                                    revScaleX(bbox_2d.width), revScaleY(bbox_2d.height),
-                                                   m_camera_orientation, m_camera_forward);
+                                                   m_camera_orientation, m_camera_forward, should_skip_message);
                     } else {
                         m_callback_tracker->onTrack(revScaleX(bbox.x), revScaleY(bbox.y),
                                                    revScaleX(bbox.width), revScaleY(bbox.height),
-                                                   m_camera_orientation, m_camera_forward);
+                                                   m_camera_orientation, m_camera_forward, should_skip_message);
                     }
                 }
             }
@@ -445,37 +445,6 @@ void CTracker::track2Rect(const float x, const float y, const float w, const flo
             cv::line(frame, cv::Point(center_x - cross_arm_length, center_y), cv::Point(center_x + cross_arm_length, center_y), cv::Scalar(0, 255, 0), 2);
             cv::line(frame, cv::Point(center_x, center_y - cross_arm_length), cv::Point(center_x, center_y + cross_arm_length), cv::Scalar(0, 255, 0), 2);
         }
-
-                    
-
-        // --- OPTIMIZATION: Use V4L2 buffer queuing instead of write() --- (NOT WORKING)
-        // if (m_virtual_device_opened)
-        // {
-        //     cv::cvtColor(frame, yuv_frame, cv::COLOR_BGR2YUV_I420);
-            
-        //     struct v4l2_buffer buf = {};
-        //     buf.type = V4L2_BUF_TYPE_VIDEO_OUTPUT;
-        //     buf.memory = V4L2_MEMORY_MMAP;
-
-        //     // Dequeue a buffer (non-blocking)
-        //     if (CVideo::xioctl(m_video_fd, VIDIOC_DQBUF, &buf) == 0)
-        //     {
-        //         // Copy frame data into the dequeued buffer
-        //         memcpy(m_buffers[buf.index].start, yuv_frame.data, m_yuv_frame_size);
-                
-        //         // Queue the buffer back to the driver
-        //         if (CVideo::xioctl(m_video_fd, VIDIOC_QBUF, &buf) < 0) {
-        //             perror("VIDIOC_QBUF");
-        //             m_process = false; // Stop on critical error
-        //         }
-        //     }
-        //     else if (errno != EAGAIN) {
-        //         perror("VIDIOC_DQBUF");
-        //         m_process = false; // Stop on critical error
-        //     }
-        //     // If errno is EAGAIN, it means the output queue is full. We simply drop the frame,
-        //     // which is the desired behavior to prevent the pipeline from blocking.
-        // }
 
         if (m_virtual_device_opened)
         {

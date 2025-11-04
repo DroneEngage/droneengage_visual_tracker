@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <iostream>
+#include <algorithm>
 
 #include "../de_common/helpers/colors.hpp"
 #include "../de_common/helpers/helpers.hpp"
@@ -17,191 +18,23 @@ using namespace de::tracker;
 
 bool CTrackerMain::init()
 {
-
-    uint16_t camera_orientation = 0;
-    bool camera_forward = true;
-    de::tracker::ENUM_TRACKER_TYPE tracker_algorithm_index = de::tracker::ENUM_TRACKER_TYPE::TRACKER_CSRT;
-
-    Json_de m_jsonConfig = CConfigFile::getInstance().GetConfigJSON();
-    if (!m_jsonConfig.contains("tracking"))
+    bool res = readConfigParameters();
+    if (res == false)
     {
-        std::cout << _ERROR_CONSOLE_BOLD_TEXT_ << "FATAL ERROR: " << _INFO_CONSOLE_TEXT << CConfigFile::getInstance().getFileName() 
-                << " does not have field " << _ERROR_CONSOLE_TEXT_ << "[tracking]" <<  _NORMAL_CONSOLE_TEXT_ 
-                << std::endl;
-	
         return false;
     }
-    else
-    {
 
-        Json_de tracking = m_jsonConfig["tracking"];
-        
-        camera_orientation = tracking["camera_orientation"].get<uint16_t>();
-        camera_forward = tracking["camera_forward"].get<bool>();
-
-        if (tracking.contains("tracker_algorithm_index"))
-        {
-            tracker_algorithm_index = tracking["tracker_algorithm_index"].get<de::tracker::ENUM_TRACKER_TYPE>();
-        }
-    }
-
-
-    
-
-    
-
-    std::string source_video_device = "";
-    std::string output_video_device = "";
-    int desired_input_width = 0;
-    int desired_input_height = 0;
-
-    if (m_jsonConfig.contains("camera"))
-    {
-        Json_de camera = m_jsonConfig["camera"];
-
-        if (camera.contains("source_video_device_name"))
-            {
-                const int video_index = CVideo::findVideoDeviceIndex(camera["source_video_device_name"].get<std::string>());
-                if (video_index != -1) 
-                {
-                    source_video_device = "/dev/video" + std::to_string(video_index);
-
-                    std::cout << _LOG_CONSOLE_BOLD_TEXT << "Using source_video_device_name:" << _INFO_CONSOLE_BOLD_TEXT << source_video_device 
-                            << _NORMAL_CONSOLE_TEXT_
-                            << std::endl;
-                }
-
-          
-            }
-
-            if (source_video_device.empty())
-            {
-                if (!camera.contains("source_video_device"))
-                {
-                    std::cout << _ERROR_CONSOLE_BOLD_TEXT_ << "FATAL ERROR: " << _INFO_CONSOLE_TEXT << CConfigFile::getInstance().getFileName() 
-                            << " does not have field " << _ERROR_CONSOLE_TEXT_ << "[source_video_device]" <<  _NORMAL_CONSOLE_TEXT_ 
-                            << std::endl;
-                
-                    return false;
-                }
-                else
-                {
-                    source_video_device = camera["source_video_device"].get<std::string>();
-
-                    std::cout << _LOG_CONSOLE_BOLD_TEXT << "Using source_video_device:" << _INFO_CONSOLE_BOLD_TEXT << source_video_device 
-                            << _NORMAL_CONSOLE_TEXT_
-                            << std::endl;
-                }
-            }
-
-            
-            if (camera.contains("output_video_device_name"))
-            {
-                const int video_index = CVideo::findVideoDeviceIndex(camera["output_video_device_name"].get<std::string>());
-                if (video_index != -1) 
-                {
-                    output_video_device = "/dev/video" + std::to_string(video_index);
-
-                    std::cout << _SUCCESS_CONSOLE_BOLD_TEXT_ << "Using output_video_device_name:" << _INFO_CONSOLE_BOLD_TEXT << output_video_device 
-                            << _NORMAL_CONSOLE_TEXT_
-                            << std::endl;
-
-                }
-            }
-
-            
-            if (output_video_device.empty())
-            {
-                if (!camera.contains("output_video_device"))
-                {
-                    std::cout << _ERROR_CONSOLE_BOLD_TEXT_ << "FATAL ERROR:" << _INFO_CONSOLE_TEXT << " No output_video_device specified in config.json" <<  _NORMAL_CONSOLE_TEXT_ << std::endl;
-                    return false;
-                }
-                else
-                {
-                    output_video_device = camera["output_video_device"].get<std::string>();
-
-                    std::cout << _SUCCESS_CONSOLE_BOLD_TEXT_ << "Using output_video_device:" << _INFO_CONSOLE_BOLD_TEXT << output_video_device 
-                            <<   _NORMAL_CONSOLE_TEXT_
-                            << std::endl;
-                }
-            }
-
-
-            // Optional desired input resolution
-                if (camera.contains("desired_input_width") && camera.contains("desired_input_height"))
-                {
-                    desired_input_width = camera["desired_input_width"].get<int>();
-                    desired_input_height = camera["desired_input_height"].get<int>();
-                    if (desired_input_width < 0 || desired_input_height < 0)
-                    {
-                        desired_input_width = 0;
-                        desired_input_height = 0;
-                    }
-                }
-
-
-                // If desired size not provided, display max available video size
-                if (desired_input_width == 0 && desired_input_height == 0 && !source_video_device.empty())
-                {
-                    unsigned int max_w = 0, max_h = 0;
-                    if (CVideo::getMaxSupportedResolution(source_video_device, max_w, max_h))
-                    {
-                        std::cout << _SUCCESS_CONSOLE_BOLD_TEXT_ << "Camera max supported resolution: "
-                                << _INFO_CONSOLE_TEXT << max_w << "x" << max_h << _NORMAL_CONSOLE_TEXT_ << std::endl;
-                    }
-                }
-    }
-    else
-    {
-        std::cout << _ERROR_CONSOLE_BOLD_TEXT_ << "FATAL ERROR:" << _INFO_CONSOLE_TEXT << " No camera specified in config.json" <<  _NORMAL_CONSOLE_TEXT_ << std::endl;
-        return false; 
-    }
-    
-    uint16_t frames_to_skip_between_messages = FRAMES_TO_SKIP_BETWEEN_MESSAGES;
-    uint16_t frame_to_skip_between_track_process = FRAMES_TO_SKIP_BETWEEN_TRACK_PROCESS;
-    
-
-    if (!m_jsonConfig.contains("advanced_tracking"))
-    {
-        std::cout << _INFO_CONSOLE_BOLD_TEXT << "Field not found in config.json: " << _INFO_CONSOLE_TEXT << "[advanced_tracking]" << _NORMAL_CONSOLE_TEXT_ << std::endl;
-        std::cout << _SUCCESS_CONSOLE_BOLD_TEXT_ << "Default Values will be used  " << _NORMAL_CONSOLE_TEXT_ << std::endl;
-
-    }
-    else
-    {
-        Json_de advanced_tracking = m_jsonConfig["advanced_tracking"];
-        if (advanced_tracking.contains("frames_to_skip_between_messages"))
-        {
-            frames_to_skip_between_messages = advanced_tracking["frames_to_skip_between_messages"].get<uint16_t>();
-        }
-
-        if (advanced_tracking.contains("frame_to_skip_between_track_process"))
-        {
-            frame_to_skip_between_track_process = advanced_tracking["frame_to_skip_between_track_process"].get<uint16_t>();
-        }
-
-        std::cout << _SUCCESS_CONSOLE_BOLD_TEXT_ << "Field Found: advanced_tracking field found:  " << _INFO_CONSOLE_TEXT << "Following values will be used:" << _NORMAL_CONSOLE_TEXT_ << std::endl;
-    }
-
-    std::cout << _INFO_CONSOLE_TEXT << "frames_to_skip_between_messages: " << _LOG_CONSOLE_BOLD_TEXT << frames_to_skip_between_messages 
-            << _INFO_CONSOLE_TEXT << ", frame_to_skip_between_track_process: " << _LOG_CONSOLE_BOLD_TEXT << frame_to_skip_between_track_process 
-            << _NORMAL_CONSOLE_TEXT_ << std::endl;
-
-    
-    
     
 
     m_tracker = std::make_unique<CTracker>(this);
     
 
     
-
-    bool res = m_tracker.get()->init(tracker_algorithm_index, source_video_device
-        , camera_orientation, camera_forward, output_video_device
-        , frames_to_skip_between_messages, frame_to_skip_between_track_process
-        , desired_input_width, desired_input_height) ;
-    if (res == false)
+    bool ok = m_tracker.get()->init(m_tracker_algorithm_index, m_source_video_device
+        , m_camera_orientation, m_camera_forward, m_output_video_device
+        , m_frames_to_skip_between_messages, m_frame_to_skip_between_track_process
+        , m_desired_input_width, m_desired_input_height) ;
+    if (ok == false)
     {
         std::cout << _ERROR_CONSOLE_BOLD_TEXT_ << "FATAL ERROR:" << _INFO_CONSOLE_TEXT << " Failed to initialize tracker. " <<  _NORMAL_CONSOLE_TEXT_ << std::endl;
         return false;
@@ -215,6 +48,177 @@ bool CTrackerMain::init()
 }
 
 
+bool CTrackerMain::readConfigParameters()
+{
+    Json_de m_jsonConfig = CConfigFile::getInstance().GetConfigJSON();
+    if (!m_jsonConfig.contains("tracking"))
+    {
+        std::cout << _ERROR_CONSOLE_BOLD_TEXT_ << "FATAL ERROR: " << _INFO_CONSOLE_TEXT << CConfigFile::getInstance().getFileName() 
+                << " does not have field " << _ERROR_CONSOLE_TEXT_ << "[tracking]" <<  _NORMAL_CONSOLE_TEXT_ 
+                << std::endl;
+	
+        return false;
+    }
+    else
+    {
+
+        Json_de tracking = m_jsonConfig["tracking"];
+        m_camera_orientation = tracking["camera_orientation"].get<uint16_t>();
+        m_camera_forward = tracking["camera_forward"].get<bool>();
+
+        if (tracking.contains("tracker_algorithm_index"))
+        {
+            m_tracker_algorithm_index = tracking["tracker_algorithm_index"].get<de::tracker::ENUM_TRACKER_TYPE>();
+        }
+    }
+
+    m_source_video_device = "";
+    m_output_video_device = "";
+    m_desired_input_width = 0;
+    m_desired_input_height = 0;
+
+    if (m_jsonConfig.contains("camera"))
+    {
+        Json_de camera = m_jsonConfig["camera"];
+
+        if (camera.contains("source_video_device_name"))
+            {
+                const int video_index = CVideo::findVideoDeviceIndex(camera["source_video_device_name"].get<std::string>());
+                if (video_index != -1) 
+                {
+                    m_source_video_device = "/dev/video" + std::to_string(video_index);
+
+                    std::cout << _LOG_CONSOLE_BOLD_TEXT << "Using source_video_device_name:" << _INFO_CONSOLE_BOLD_TEXT << m_source_video_device 
+                            << _NORMAL_CONSOLE_TEXT_
+                            << std::endl;
+                }
+
+          
+            }
+
+            if (m_source_video_device.empty())
+            {
+                if (!camera.contains("source_video_device"))
+                {
+                    std::cout << _ERROR_CONSOLE_BOLD_TEXT_ << "FATAL ERROR: " << _INFO_CONSOLE_TEXT << CConfigFile::getInstance().getFileName() 
+                            << " does not have field " << _ERROR_CONSOLE_TEXT_ << "[source_video_device]" <<  _NORMAL_CONSOLE_TEXT_ 
+                            << std::endl;
+                
+                    return false;
+                }
+                else
+                {
+                    m_source_video_device = camera["source_video_device"].get<std::string>();
+
+                    std::cout << _LOG_CONSOLE_BOLD_TEXT << "Using source_video_device:" << _INFO_CONSOLE_BOLD_TEXT << m_source_video_device 
+                            << _NORMAL_CONSOLE_TEXT_
+                            << std::endl;
+                }
+            }
+
+            
+            if (camera.contains("output_video_device_name"))
+            {
+                const int video_index = CVideo::findVideoDeviceIndex(camera["output_video_device_name"].get<std::string>());
+                if (video_index != -1) 
+                {
+                    m_output_video_device = "/dev/video" + std::to_string(video_index);
+
+                    std::cout << _SUCCESS_CONSOLE_BOLD_TEXT_ << "Using output_video_device_name:" << _INFO_CONSOLE_BOLD_TEXT << m_output_video_device 
+                            << _NORMAL_CONSOLE_TEXT_
+                            << std::endl;
+
+                }
+            }
+
+            
+            if (m_output_video_device.empty())
+            {
+                if (!camera.contains("output_video_device"))
+                {
+                    std::cout << _ERROR_CONSOLE_BOLD_TEXT_ << "FATAL ERROR:" << _INFO_CONSOLE_TEXT << " No output_video_device specified in config.json" <<  _NORMAL_CONSOLE_TEXT_ << std::endl;
+                    return false;
+                }
+                else
+                {
+                    m_output_video_device = camera["output_video_device"].get<std::string>();
+
+                    std::cout << _SUCCESS_CONSOLE_BOLD_TEXT_ << "Using output_video_device:" << _INFO_CONSOLE_BOLD_TEXT << m_output_video_device 
+                            <<   _NORMAL_CONSOLE_TEXT_
+                            << std::endl;
+                }
+            }
+
+
+            // Optional desired input resolution
+                if (camera.contains("desired_input_width") && camera.contains("desired_input_height"))
+                {
+                    m_desired_input_width = camera["desired_input_width"].get<int>();
+                    m_desired_input_height = camera["desired_input_height"].get<int>();
+                    if (m_desired_input_width < 0 || m_desired_input_height < 0)
+                    {
+                        m_desired_input_width = 0;
+                        m_desired_input_height = 0;
+                    }
+                }
+
+
+                // If desired size not provided, display max available video size
+                if (m_desired_input_width == 0 && m_desired_input_height == 0 && !m_source_video_device.empty())
+                {
+                    unsigned int max_w = 0, max_h = 0;
+                    if (CVideo::getMaxSupportedResolution(m_source_video_device, max_w, max_h))
+                    {
+                        std::cout << _SUCCESS_CONSOLE_BOLD_TEXT_ << "Camera max supported resolution: "
+                                << _INFO_CONSOLE_TEXT << max_w << "x" << max_h << _NORMAL_CONSOLE_TEXT_ << std::endl;
+                    }
+                }
+    }
+    else
+    {
+        std::cout << _ERROR_CONSOLE_BOLD_TEXT_ << "FATAL ERROR:" << _INFO_CONSOLE_TEXT << " No camera specified in config.json" <<  _NORMAL_CONSOLE_TEXT_ << std::endl;
+        return false; 
+    }
+    
+    m_frames_to_skip_between_messages = FRAMES_TO_SKIP_BETWEEN_MESSAGES;
+    m_frame_to_skip_between_track_process = FRAMES_TO_SKIP_BETWEEN_TRACK_PROCESS;
+    
+
+    if (!m_jsonConfig.contains("advanced_tracking"))
+    {
+        std::cout << _INFO_CONSOLE_BOLD_TEXT << "Field not found in config.json: " << _INFO_CONSOLE_TEXT << "[advanced_tracking]" << _NORMAL_CONSOLE_TEXT_ << std::endl;
+        std::cout << _SUCCESS_CONSOLE_BOLD_TEXT_ << "Default Values will be used  " << _NORMAL_CONSOLE_TEXT_ << std::endl;
+
+    }
+    else
+    {
+        Json_de advanced_tracking = m_jsonConfig["advanced_tracking"];
+        if (advanced_tracking.contains("frames_to_skip_between_messages"))
+        {
+            m_frames_to_skip_between_messages = advanced_tracking["frames_to_skip_between_messages"].get<uint16_t>();
+        }
+
+        if (advanced_tracking.contains("frame_to_skip_between_track_process"))
+        {
+            m_frame_to_skip_between_track_process = advanced_tracking["frame_to_skip_between_track_process"].get<uint16_t>();
+        }
+
+        if (advanced_tracking.contains("ema_alpha_base"))
+        {
+            m_ema_alpha_base = advanced_tracking["ema_alpha_base"].get<double>();
+        }
+
+        std::cout << _SUCCESS_CONSOLE_BOLD_TEXT_ << "Field Found: advanced_tracking field found:  " << _INFO_CONSOLE_TEXT << "Following values will be used:" << _NORMAL_CONSOLE_TEXT_ << std::endl;
+    }
+
+    std::cout << _INFO_CONSOLE_TEXT << "frames_to_skip_between_messages: " << _LOG_CONSOLE_BOLD_TEXT << m_frames_to_skip_between_messages 
+            << _INFO_CONSOLE_TEXT << ", frame_to_skip_between_track_process: " << _LOG_CONSOLE_BOLD_TEXT << m_frame_to_skip_between_track_process 
+            << _INFO_CONSOLE_TEXT << ", ema_alpha_base: " << _LOG_CONSOLE_BOLD_TEXT << m_ema_alpha_base 
+            << _NORMAL_CONSOLE_TEXT_ << std::endl;
+
+    return true;
+    
+}
 
 bool CTrackerMain::uninit()
 {
@@ -281,33 +285,49 @@ void CTrackerMain::stopTracking()
  * (0,0) top left
  * center = [(x + w )/2 , (y + h)/2]
  */
-void CTrackerMain::onTrack (const float& x, const float& y, const float& width, const float& height, const uint16_t camera_orientation, const bool camera_forward) 
+void CTrackerMain::onTrack (const float& x, const float& y, const float& width, const float& height, const uint16_t camera_orientation, const bool camera_forward, const bool should_skip_message) 
 {
 
-   const double center_x = -0.5 +  x + width /2.0f; 
-   const double center_y = -0.5 + y + height /2.0f; 
+   double center_x = -0.5 +  x + width /2.0f; 
+   double center_y = -0.5 + y + height /2.0f; 
       
+
+   const double rx = center_x;   // raw normalized [-0.5..0.5]
+   const double ry = center_y;
+
+   if (!m_ema_init) {
+    m_ema_x = rx;
+    m_ema_y = ry;
+    m_ema_init = true;
+} else {
+    // optional adaptive alpha: more responsive on big moves
+    const double mag = std::max(std::abs(rx - m_ema_x), std::abs(ry - m_ema_y));
+    const double alpha = std::clamp(m_ema_alpha_base + 0.5 * mag, 0.1, 0.8);
+    m_ema_x = alpha * rx + (1.0 - alpha) * m_ema_x;
+    m_ema_y = alpha * ry + (1.0 - alpha) * m_ema_y;
+}
+
    double delta_x,delta_y,delta_z;
 
     switch (camera_orientation)
     {
     case DEF_TRACK_ORIENTATION_DEG_0:
-            delta_x =  center_x;
-            delta_y =  center_y;
+            delta_x =  m_ema_x;
+            delta_y =  m_ema_y;
         break;
     case DEF_TRACK_ORIENTATION_DEG_90:
-            delta_x =   center_y;
-            delta_y =  -center_x;
+            delta_x =   m_ema_y;
+            delta_y =  -m_ema_x;
         break;
     
     case DEF_TRACK_ORIENTATION_DEG_180:
-            delta_x = -center_x;
-            delta_y = -center_y;
+            delta_x = -m_ema_x;
+            delta_y = -m_ema_y;
         break;
 
     case DEF_TRACK_ORIENTATION_DEG_270:
-            delta_x =  -center_y;
-            delta_y =  -center_x;
+            delta_x =  -m_ema_y;
+            delta_y =  -m_ema_x;
         break;
     
     default:
@@ -356,11 +376,13 @@ void CTrackerMain::onTrack (const float& x, const float& y, const float& width, 
         << _NORMAL_CONSOLE_TEXT_ << std::endl;
     #endif
 
-    
-    m_trackerFacade.sendTrackingTargetsLocation (
-        std::string(""),
-        targets
-    );
+    if (!should_skip_message)
+    {
+        m_trackerFacade.sendTrackingTargetsLocation (
+            std::string(""),
+            targets
+        );
+    }
 }
 
 /**
