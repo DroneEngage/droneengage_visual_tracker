@@ -105,7 +105,7 @@
                         "type": "number",
                         "defaultvalue": 0.3,
                         "optional": false,
-                        "desc": "EMA smoothing alpha (0-1)"
+                        "desc": "EMA smoothing alpha (0.0-1.0)"
                     }
                 }
             }
