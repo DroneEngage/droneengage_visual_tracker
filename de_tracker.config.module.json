@@ -37,6 +37,7 @@
     // Advanced Parameters:
     "advanced_tracking": {
         "frames_to_skip_between_messages": 15, //optional default: 15
-        "frame_to_skip_between_track_process": 3 //optional default: 5
+        "frame_to_skip_between_track_process": 3, //optional default: 5
+        "ema_alpha_base": 0.3
     }
 }

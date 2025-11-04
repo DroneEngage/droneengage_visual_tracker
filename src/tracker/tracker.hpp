@@ -62,7 +62,7 @@ namespace tracker
     class CCallBack_Tracker
     {
         public:
-            virtual void onTrack (const float& x, const float& y, const float& width, const float& height, const uint16_t camera_orientation, const bool camera_forward) = 0;
+            virtual void onTrack (const float& x, const float& y, const float& width, const float& height, const uint16_t camera_orientation, const bool camera_forward, const bool should_skip_message) = 0;
             virtual void onTrackStatusChanged (const int& track) = 0;
     };
 

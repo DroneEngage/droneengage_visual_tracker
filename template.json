@@ -98,6 +98,14 @@
                         "defaultvalue": 3,
                         "optional": false,
                         "desc": "frame to skip between track process"
+                    },
+                    "ema alpha base": {
+                        "fieldName": "ema_alpha_base",
+                        "order":3,
+                        "type": "number",
+                        "defaultvalue": 0.3,
+                        "optional": false,
+                        "desc": "EMA smoothing alpha (0-1)"
                     }
                 }
             }
