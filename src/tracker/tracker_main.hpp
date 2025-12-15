@@ -9,6 +9,8 @@
 #include "tracker_facade.hpp"
 
 
+#include "../de_common/de_databus/messages.hpp"
+
 
 #include "../de_common/helpers/json_nlohmann.hpp"
 using Json_de = nlohmann::json;
@@ -86,6 +88,14 @@ namespace tracker
             {
                 return m_ai_tracker_status;
             }
+            inline bool getCameraFlipped() const
+            {
+                return m_camera_flipped;
+            }
+            inline uint8_t getTrackingCameraDirection() const
+            {
+                return m_tracking_camera_direction;
+            }
 
         public:
             //CCommon_Callback
@@ -93,7 +103,7 @@ namespace tracker
         
         public:
             //CCallBack_Tracker
-            void onTrack (const float& x, const float& y, const float& width, const float& height, const uint16_t camera_orientation, const bool camera_forward, const bool should_skip_message) override ;
+            void onTrack (const float& x, const float& y, const float& width, const float& height, const uint16_t camera_orientation, const bool camera_flipped, const uint8_t tracking_camera_direction, const bool should_skip_message) override ;
             void onTrackStatusChanged (const int& track) override ;
 
         
@@ -111,11 +121,13 @@ namespace tracker
             double m_ema_x = 0, m_ema_y = 0;
             double m_ema_alpha_base = 0.3; // tune: 0.1..0.5
             std::unique_ptr<de::tracker::CTracker> m_tracker;
-            de::tracker::CTracker_Facade& m_trackerFacade = de::tracker::CTracker_Facade::getInstance();
+            de::tracker::CTracker_Facade& m_tracker_facade = de::tracker::CTracker_Facade::getInstance();
 
             // Parsed configuration values
             uint16_t m_camera_orientation = DEF_TRACK_ORIENTATION_DEG_0;
-            bool m_camera_forward = true;
+            // camera image is flipped
+            bool m_camera_flipped = false;
+            uint8_t m_tracking_camera_direction = TRACKING_CAMERA_DIRECTION_NONE;
             de::tracker::ENUM_TRACKER_TYPE m_tracker_algorithm_index = de::tracker::ENUM_TRACKER_TYPE::TRACKER_CSRT;
 
             std::string m_source_video_device;

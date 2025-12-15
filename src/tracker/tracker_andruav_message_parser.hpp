@@ -18,6 +18,7 @@ using Json_de = nlohmann::json;
 #include "../de_common/de_databus/de_message_parser_base.hpp"
 
 #include "tracker_main.hpp"
+#include "tracker_facade.hpp"
 
 namespace de
 {
@@ -57,7 +58,8 @@ namespace de
             }
 
         private:
-            de::tracker::CTrackerMain &m_trackerMain = de::tracker::CTrackerMain::getInstance();
+            de::tracker::CTrackerMain &m_tracker_main = de::tracker::CTrackerMain::getInstance();
+            de::tracker::CTracker_Facade &m_tracker_facade = de::tracker::CTracker_Facade::getInstance();
         };
 
     };

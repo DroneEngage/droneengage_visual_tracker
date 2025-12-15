@@ -28,10 +28,9 @@ bool CTrackerMain::init()
 
     m_tracker = std::make_unique<CTracker>(this);
     
-
     
     bool ok = m_tracker.get()->init(m_tracker_algorithm_index, m_source_video_device
-        , m_camera_orientation, m_camera_forward, m_output_video_device
+        , m_camera_orientation, m_camera_flipped, m_tracking_camera_direction, m_output_video_device
         , m_frames_to_skip_between_messages, m_frame_to_skip_between_track_process
         , m_desired_input_width, m_desired_input_height) ;
     if (ok == false)
@@ -62,9 +61,30 @@ bool CTrackerMain::readConfigParameters()
     else
     {
 
+        m_camera_flipped = false;
+
         Json_de tracking = m_jsonConfig["tracking"];
         m_camera_orientation = tracking["camera_orientation"].get<uint16_t>();
-        m_camera_forward = tracking["camera_forward"].get<bool>();
+        if (tracking.contains("tracking_camera_direction"))
+        {
+            m_tracking_camera_direction = tracking["tracking_camera_direction"].get<uint8_t>();
+        }
+        
+        if (tracking.contains("camera_flipped"))
+        {
+            m_camera_flipped = tracking["camera_flipped"].get<bool>();
+        }
+
+        if (m_tracking_camera_direction > TRACKING_CAMERA_DIRECTION_UP)
+        {
+            std::cout << _ERROR_CONSOLE_BOLD_TEXT_ << "FATAL ERROR:" << _INFO_CONSOLE_TEXT
+                    << " invalid tracking_camera_direction: " << _ERROR_CONSOLE_TEXT_ << (int)m_tracking_camera_direction
+                    << std::endl
+                    << "Assuming Default Camera Forward"
+                    << _NORMAL_CONSOLE_TEXT_ << std::endl;
+            m_tracking_camera_direction = TRACKING_CAMERA_DIRECTION_NONE;
+        }
+        
 
         if (tracking.contains("tracker_algorithm_index"))
         {
@@ -239,7 +259,7 @@ void CTrackerMain::startTrackingRect(const float x, const float y, const float w
 
     m_tracker.get()->trackRect(x,y,w,h);
 
-    m_trackerFacade.sendTrackingTargetStatus (
+    m_tracker_facade.sendTrackingTargetStatus (
         std::string(""),
         m_tracker_status
     );
@@ -253,7 +273,7 @@ void CTrackerMain::enableTracking()
     m_tracker_status = TrackingTarget_STATUS_TRACKING_ENABLED;
     
     // ACK
-    m_trackerFacade.sendTrackingTargetStatus (
+    m_tracker_facade.sendTrackingTargetStatus (
         std::string(""),
         m_tracker_status
     );
@@ -270,7 +290,7 @@ void CTrackerMain::stopTracking()
     m_tracker_status = TrackingTarget_STATUS_TRACKING_STOPPED;
     m_tracker.get()->stop();
 
-    m_trackerFacade.sendTrackingTargetStatus (
+    m_tracker_facade.sendTrackingTargetStatus (
         std::string(""),
         m_tracker_status
     );
@@ -285,8 +305,13 @@ void CTrackerMain::stopTracking()
  * (0,0) top left
  * center = [(x + w )/2 , (y + h)/2]
  */
-void CTrackerMain::onTrack (const float& x, const float& y, const float& width, const float& height, const uint16_t camera_orientation, const bool camera_forward, const bool should_skip_message) 
+void CTrackerMain::onTrack (const float& x, const float& y, const float& width, const float& height, const uint16_t camera_orientation, const bool camera_flipped, const uint8_t tracking_camera_direction, const bool should_skip_message) 
 {
+
+   if (tracking_camera_direction == TRACKING_CAMERA_DIRECTION_NONE)
+   {
+        return;
+   }
 
    double center_x = -0.5 +  x + width /2.0f; 
    double center_y = -0.5 + y + height /2.0f; 
@@ -308,6 +333,7 @@ void CTrackerMain::onTrack (const float& x, const float& y, const float& width, 
 }
 
    double delta_x,delta_y,delta_z;
+   delta_z = 0.0;
 
     switch (camera_orientation)
     {
@@ -336,6 +362,18 @@ void CTrackerMain::onTrack (const float& x, const float& y, const float& width, 
         break;
     }
 
+    if (camera_flipped)
+    {
+        delta_x = -delta_x;
+    }
+
+    if (tracking_camera_direction == TRACKING_CAMERA_DIRECTION_BACK)
+    {
+        // camera installed backward
+        delta_x = -delta_x;
+        delta_y = -delta_y;
+    }
+
 #ifdef DEBUG
     std::cout << "Track Object:" << center_x << ":" << center_y << std::endl;
 #endif
@@ -347,21 +385,34 @@ void CTrackerMain::onTrack (const float& x, const float& y, const float& width, 
 
     Json_de targets = Json_de::array();
     
-    if (camera_forward)
+    switch (tracking_camera_direction)
     {
+    case TRACKING_CAMERA_DIRECTION_FRONT:
+    case TRACKING_CAMERA_DIRECTION_BACK:
         targets.push_back({
             {"x",delta_x},
             {"y",-delta_y}
         });
-    }
-    else
-    {
-        delta_z = delta_y;
+        break;
 
+    case TRACKING_CAMERA_DIRECTION_DOWN:
+        delta_z = delta_y;
         targets.push_back({
             {"x",delta_x},
-            {"z",delta_z}
+            {"y",delta_z}
         });
+        break;
+
+    case TRACKING_CAMERA_DIRECTION_UP:
+        delta_z = -delta_y;
+        targets.push_back({
+            {"x",delta_x},
+            {"y",delta_z}
+        });
+        break;
+
+    default:
+        return;
     }
 
     #ifdef DDEBUG
@@ -378,7 +429,7 @@ void CTrackerMain::onTrack (const float& x, const float& y, const float& width, 
 
     if (!should_skip_message)
     {
-        m_trackerFacade.sendTrackingTargetsLocation (
+        m_tracker_facade.sendTrackingTargetsLocation (
             std::string(""),
             targets
         );
@@ -392,7 +443,7 @@ void CTrackerMain::onTrackStatusChanged (const int& status)
 {
     m_tracker_status = status;
     
-    m_trackerFacade.sendTrackingTargetStatus (
+    m_tracker_facade.sendTrackingTargetStatus (
         std::string(""),
         status
     );
