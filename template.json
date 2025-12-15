@@ -64,13 +64,13 @@
                         "optional": false,
                         "desc": "Camera Rotation (0:0,1:90,2:180,3:270)"
                     },
-                    "Camera Forward": {
-                        "fieldName": "camera_forward",
+                    "Tracking Camera Direction": {
+                        "fieldName": "tracking_camera_direction",
                         "order":3,
-                        "type": "checkbox",
-                        "defaultvalue": false,
+                        "type": "number",
+                        "defaultvalue": 0,
                         "optional": false,
-                        "desc": "unchecked-horizontal / checked-vertical"
+                        "desc": "(0:none,1:front,2:back,3:down,4:up)"
                     }
                 }
             }

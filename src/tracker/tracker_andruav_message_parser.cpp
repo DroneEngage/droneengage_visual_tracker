@@ -46,7 +46,7 @@ void CTrackerAndruavMessageParser::parseCommand(Json_de &andruav_message, const 
             if (r <= 0.01f)
                 break;
 
-            m_trackerMain.startTrackingRect(x, y, r, r);
+            m_tracker_main.startTrackingRect(x, y, r, r);
         }
         break;
 
@@ -78,20 +78,23 @@ void CTrackerAndruavMessageParser::parseCommand(Json_de &andruav_message, const 
             if (h <= 0.01f)
                 break;
 
-            m_trackerMain.startTrackingRect(x, y, w, h);
+            m_tracker_main.startTrackingRect(x, y, w, h);
         }
         break;
 
         case TrackingTarget_ACTION_TRACKING_STOP:
-            m_trackerMain.stopTracking();
+            m_tracker_main.stopTracking();
             break;
 
         case TrackingTarget_ACTION_TRACKING_PAUSE:
-            m_trackerMain.pauseTracking();
+            m_tracker_main.pauseTracking();
             break;
 
         case TrackingTarget_ACTION_TRACKING_ENABLE:
-            m_trackerMain.enableTracking();
+            m_tracker_main.enableTracking();
+            break;
+        case TrackingTarget_ACTION_TRACKING_QUERY_CONFIG:
+            m_tracker_facade.sendTrackingConfig(andruav_message[ANDRUAV_PROTOCOL_SENDER].get<std::string>());
             break;
         }
     }
@@ -103,7 +106,7 @@ void CTrackerAndruavMessageParser::parseCommand(Json_de &andruav_message, const 
             return;
         const int status = cmd["a"].get<int>();
 
-        m_trackerMain.setAITrackerStatus(status);
+        m_tracker_main.setAITrackerStatus(status);
 
         switch (status)
         {
@@ -148,7 +151,7 @@ void CTrackerAndruavMessageParser::parseCommand(Json_de &andruav_message, const 
             std::cout << "Best AI Object:" << centerX << ":" << centerY << std::endl;
 #endif
 
-            m_trackerMain.onAITrackerBestRect(x, y, w, h);
+            m_tracker_main.onAITrackerBestRect(x, y, w, h);
         }
     }
     break;
