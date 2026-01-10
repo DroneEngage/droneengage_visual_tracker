@@ -34,6 +34,20 @@
                         "defaultvalue": "DE-TRK",
                         "optional": true,
                         "desc": "virtual video output by name."
+                    },
+                    "desired_input_width": {
+                        "order":5,
+                        "type": "number",
+                        "defaultvalue": 1280,
+                        "optional": true,
+                        "desc": "desired input width"
+                    },
+                    "desired_input_height": {
+                        "order":6,
+                        "type": "number",
+                        "defaultvalue": 720,
+                        "optional": true,
+                        "desc": "desired input height"
                     }
                     
                 },
@@ -71,6 +85,14 @@
                         "defaultvalue": 0,
                         "optional": false,
                         "desc": "(0:none,1:front,2:back,3:down,4:up)"
+                    },
+                    "Camera Flipped": {
+                        "fieldName": "camera_flipped",
+                        "order":4,
+                        "type": "boolean",
+                        "defaultvalue": false,
+                        "optional": false,
+                        "desc": "Camera flipped horizontally/vertically"
                     }
                 }
             }
@@ -87,7 +109,7 @@
                         "fieldName": "frames_to_skip_between_messages",
                         "order":1,
                         "type": "number",
-                        "defaultvalue": 15,
+                        "defaultvalue": 3,
                         "optional": false,
                         "desc": "frames to skip between messages"
                     },
@@ -95,7 +117,7 @@
                         "fieldName": "frame_to_skip_between_track_process",
                         "order":2,
                         "type": "number",
-                        "defaultvalue": 3,
+                        "defaultvalue": 2,
                         "optional": false,
                         "desc": "frame to skip between track process"
                     },

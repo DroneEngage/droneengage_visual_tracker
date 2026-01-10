@@ -33,12 +33,12 @@
         "tracker_algorithm_index": 7,
         "camera_orientation": 0, // 0b0000 bit:0 horizontal/vertical, bits1,2: rotation (0,90,180,270)
         "camera_flipped": false,
-        "tracking_camera_direction": 4
+        "tracking_camera_direction": 1  // none, front , back , down , up 
     },
     // Advanced Parameters:
     "advanced_tracking": {
-        "frames_to_skip_between_messages": 15, //optional default: 15
-        "frame_to_skip_between_track_process": 3, //optional default: 5
+        "frames_to_skip_between_messages": 3, //optional default: 15
+        "frame_to_skip_between_track_process": 2, //optional default: 5
         "ema_alpha_base": 0.3
     }
 }

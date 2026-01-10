@@ -1,6 +1,6 @@
 #ifndef TRACKER_MAIN_H
 #define TRACKER_MAIN_H
-
+#include <thread>
 #include "../de_common/de_databus/de_module.hpp"
 #include "../de_common/de_databus/de_common_callback.hpp"
 #include <string>
@@ -65,7 +65,8 @@ namespace tracker
             bool init() ;
             bool uninit() ;
             
-        
+            void loopScheduler();
+
         public:
             
             void enableTracking();
@@ -92,10 +93,7 @@ namespace tracker
             {
                 return m_camera_flipped;
             }
-            inline uint8_t getTrackingCameraDirection() const
-            {
-                return m_tracking_camera_direction;
-            }
+            
 
         public:
             //CCommon_Callback
@@ -103,19 +101,26 @@ namespace tracker
         
         public:
             //CCallBack_Tracker
-            void onTrack (const float& x, const float& y, const float& width, const float& height, const uint16_t camera_orientation, const bool camera_flipped, const uint8_t tracking_camera_direction, const bool should_skip_message) override ;
+            void onTrack (const float& x, const float& y, const float& width, const float& height, const bool should_skip_message) override ;
             void onTrackStatusChanged (const int& track) override ;
 
-        
+            inline uint8_t getTrackingCameraDirection() const
+            {
+                return m_tracking_camera_direction;
+            }
         private:
             bool readConfigParameters();
+            void reloadParametersIfConfigChanged();
 
         private:
         
+            bool m_exit_thread = true;
+            std::thread m_scheduler_thread;
+            u_int64_t m_counter =0;
+            
             int m_tracker_status = TrackingTarget_STATUS_TRACKING_STOPPED;
             int m_ai_tracker_status = TrackingTarget_STATUS_AI_Recognition_DISABLED;
             
-            bool m_exit_thread = true;
             
             bool m_ema_init = false;
             double m_ema_x = 0, m_ema_y = 0;
