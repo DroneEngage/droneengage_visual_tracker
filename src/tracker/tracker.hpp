@@ -53,7 +53,7 @@ enum ENUM_TRACKER_TYPE {
 
 class CCallBack_Tracker {
 public:
-  virtual void onTrack (const float& x, const float& y, const float& width, const float& height, const uint16_t camera_orientation, const bool camera_flipped, const uint8_t tracking_camera_direction, const bool should_skip_message) = 0;
+  virtual void onTrack (const float& x, const float& y, const float& width, const float& height, const bool should_skip_message) = 0;
   virtual void onTrackStatusChanged(const int &track) = 0;
 };
 
@@ -73,8 +73,7 @@ public:
 
 public:
   bool init(const enum ENUM_TRACKER_TYPE tracker_type,
-            const std::string &video_path, const uint16_t camera_orientation,
-            const bool camera_flipped, const uint8_t tracking_camera_direction,
+            const std::string &video_path,
             const std::string &output_video_device,
             uint16_t frames_to_skip_between_messages,
             uint16_t frame_to_skip_between_track_process,
@@ -92,8 +91,7 @@ public:
 
   bool isTrackingValid() const { return m_valid_track; };
 
-public:
-  inline const uint16_t getCameraOrientation() { return m_camera_orientation; }
+
 
 protected:
   bool getVideoResolution(const std::string &video_device_path,
@@ -138,7 +136,6 @@ private:
   bool m_virtual_device_opened = false;
   bool m_is_tracking_active_initial = false;
 
-  bool m_camera_flipped = false;
   uint8_t m_tracking_camera_direction = 0;
   uint16_t m_camera_orientation = DEF_TRACK_ORIENTATION_DEG_0;
 

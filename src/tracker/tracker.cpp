@@ -101,9 +101,6 @@ bool CTracker::initTargetVirtualVideoDevice(
 
 bool CTracker::init(const enum ENUM_TRACKER_TYPE tracker_type,
                     const std::string &video_path,
-                    const uint16_t camera_orientation,
-                    const bool camera_flipped,
-                    const uint8_t tracking_camera_direction,
                     const std::string &output_video_device,
                     uint16_t frames_to_skip_between_messages,
                     uint16_t frame_to_skip_between_track_process,
@@ -123,10 +120,6 @@ bool CTracker::init(const enum ENUM_TRACKER_TYPE tracker_type,
 
   m_frames_to_skip_between_messages = frames_to_skip_between_messages;
   m_frame_to_skip_between_track_process = frame_to_skip_between_track_process;
-
-  m_camera_flipped = camera_flipped;
-  m_tracking_camera_direction = tracking_camera_direction;
-  m_camera_orientation = camera_orientation;
 
   m_process = false;
   m_active_tracker = tracker_type;
@@ -463,13 +456,12 @@ void CTracker::track2Rect(const float x, const float y, const float w,
             m_callback_tracker->onTrack(
                 revScaleX(bbox_2d.x), revScaleY(bbox_2d.y),
                 revScaleX(bbox_2d.width), revScaleY(bbox_2d.height),
-                m_camera_orientation, m_camera_flipped,
-                m_tracking_camera_direction, should_skip_message);
+                should_skip_message);
           } else {
             m_callback_tracker->onTrack(
                 revScaleX(bbox.x), revScaleY(bbox.y), revScaleX(bbox.width),
-                revScaleY(bbox.height), m_camera_orientation, m_camera_flipped,
-                m_tracking_camera_direction, should_skip_message);
+                revScaleY(bbox.height), 
+                should_skip_message);
           }
         }
       } else {

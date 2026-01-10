@@ -15,7 +15,7 @@ void CTracker_Facade::sendTrackingTargetsLocation(
 #ifdef DDEBUG
   std::cout << "tracking:" << targets_location.dump() << std::endl;
 #endif
-#ifdef DEBUG
+#ifdef DDEBUG
   std::cout << _INFO_CONSOLE_BOLD_TEXT << "onTrack >> "
             << _LOG_CONSOLE_BOLD_TEXT << targets_location.dump()
             << _NORMAL_CONSOLE_TEXT_ << std::endl;
