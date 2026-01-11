@@ -49,7 +49,7 @@ void CTracker_Facade::sendTrackingConfig(
   de::tracker::CTrackerMain &sendTrackingConfig =
       de::tracker::CTrackerMain::getInstance();
 
-  Json_de message = {{"a", 1}};
+  Json_de message = {{"a", 2}};
 
   m_module.sendJMSG(target_party_id, message,
                     TYPE_AndruavMessage_TargetTracking_STATUS, true);
