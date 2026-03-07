@@ -93,6 +93,14 @@
                         "defaultvalue": false,
                         "optional": false,
                         "desc": "Camera flipped horizontally/vertically"
+                    },
+                    "Crosshair": {
+                        "fieldName": "crosshair",
+                        "order":5,
+                        "type": "boolean",
+                        "defaultvalue": true,
+                        "optional": true,
+                        "desc": "Display crosshair overlay during tracking"
                     }
                 }
             }
