@@ -48,7 +48,7 @@ bool CTrackerMain::init() {
       m_tracker_algorithm_index, m_source_video_device,
       m_output_video_device,
       m_frames_to_skip_between_messages, m_frame_to_skip_between_track_process,
-      m_desired_input_width, m_desired_input_height);
+      m_desired_input_width, m_desired_input_height, m_crosshair);
   if (ok == false) {
     std::cout << _ERROR_CONSOLE_BOLD_TEXT_
               << "FATAL ERROR:" << _INFO_CONSOLE_TEXT
@@ -108,6 +108,16 @@ void CTrackerMain::reloadParametersIfConfigChanged() {
     std::cout << _LOG_CONSOLE_BOLD_TEXT
                   << "Using camera_flipped:" << _INFO_CONSOLE_BOLD_TEXT
                   << m_camera_flipped << _NORMAL_CONSOLE_TEXT_
+                  << std::endl;
+  }
+
+  m_crosshair = true;
+  if (tracking.contains("crosshair")) {
+    m_crosshair = tracking["crosshair"].get<bool>();
+    
+    std::cout << _LOG_CONSOLE_BOLD_TEXT
+                  << "Using crosshair:" << _INFO_CONSOLE_BOLD_TEXT
+                  << m_crosshair << _NORMAL_CONSOLE_TEXT_
                   << std::endl;
   }
 

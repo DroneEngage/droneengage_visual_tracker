@@ -77,7 +77,8 @@ public:
             const std::string &output_video_device,
             uint16_t frames_to_skip_between_messages,
             uint16_t frame_to_skip_between_track_process,
-            int desired_input_width = 0, int desired_input_height = 0);
+            int desired_input_width = 0, int desired_input_height = 0,
+            bool crosshair = true);
 
   bool uninit();
   void track(const float x, const float y, const float radius);
@@ -138,6 +139,7 @@ private:
 
   uint8_t m_tracking_camera_direction = 0;
   uint16_t m_camera_orientation = DEF_TRACK_ORIENTATION_DEG_0;
+  bool m_crosshair = true;
 
   uint32_t m_target_fps = 30;
 

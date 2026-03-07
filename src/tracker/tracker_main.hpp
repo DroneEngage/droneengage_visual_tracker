@@ -93,6 +93,10 @@ namespace tracker
             {
                 return m_camera_flipped;
             }
+            inline bool getCrosshair() const
+            {
+                return m_crosshair;
+            }
             
 
         public:
@@ -134,6 +138,7 @@ namespace tracker
             bool m_camera_flipped = false;
             uint8_t m_tracking_camera_direction = TRACKING_CAMERA_DIRECTION_NONE;
             de::tracker::ENUM_TRACKER_TYPE m_tracker_algorithm_index = de::tracker::ENUM_TRACKER_TYPE::TRACKER_CSRT;
+            bool m_crosshair = true;
 
             std::string m_source_video_device;
             std::string m_output_video_device;

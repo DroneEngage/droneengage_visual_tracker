@@ -104,7 +104,8 @@ bool CTracker::init(const enum ENUM_TRACKER_TYPE tracker_type,
                     const std::string &output_video_device,
                     uint16_t frames_to_skip_between_messages,
                     uint16_t frame_to_skip_between_track_process,
-                    int desired_input_width, int desired_input_height) {
+                    int desired_input_width, int desired_input_height,
+                    bool crosshair) {
 
   // Enable OpenCV OpenCL acceleration if available for operations like cvtColor
   cv::ocl::setUseOpenCL(true);
@@ -120,6 +121,7 @@ bool CTracker::init(const enum ENUM_TRACKER_TYPE tracker_type,
 
   m_frames_to_skip_between_messages = frames_to_skip_between_messages;
   m_frame_to_skip_between_track_process = frame_to_skip_between_track_process;
+  m_crosshair = crosshair;
 
   m_process = false;
   m_active_tracker = tracker_type;
@@ -469,13 +471,15 @@ void CTracker::track2Rect(const float x, const float y, const float w,
                     cv::FONT_HERSHEY_SIMPLEX, 0.75, cv::Scalar(0, 0, 255), 2);
         m_valid_track = false;
       }
-      // Always draw crosshair if tracking was started
-      cv::line(frame, cv::Point(center_x - cross_arm_length, center_y),
-               cv::Point(center_x + cross_arm_length, center_y),
-               cv::Scalar(0, 255, 0), 2);
-      cv::line(frame, cv::Point(center_x, center_y - cross_arm_length),
-               cv::Point(center_x, center_y + cross_arm_length),
-               cv::Scalar(0, 255, 0), 2);
+      // Draw crosshair if tracking was started and crosshair is enabled
+      if (m_crosshair) {
+        cv::line(frame, cv::Point(center_x - cross_arm_length, center_y),
+                 cv::Point(center_x + cross_arm_length, center_y),
+                 cv::Scalar(0, 255, 0), 2);
+        cv::line(frame, cv::Point(center_x, center_y - cross_arm_length),
+                 cv::Point(center_x, center_y + cross_arm_length),
+                 cv::Scalar(0, 255, 0), 2);
+      }
     }
 
     if (m_virtual_device_opened) {
