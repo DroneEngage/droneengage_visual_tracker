@@ -81,7 +81,8 @@ AI Detection → Track Processing → Status Updates
 - 2: `TrackingTarget_STATUS_AI_Recognition_ENABLED`
 - 3: `TrackingTarget_STATUS_AI_Recognition_DISABLED`
 
-**Processing**: Updates tracker's AI status and adjusts tracking behavior accordingly
+**Processing**: Updates tracker's AI status and adjusts tracking behavior accordingly. 
+**AI Feedback Integration**: Uses `m_tracker_main.setAITrackerStatus(status)`  to synchronize AI recognition status with the tracking engine.
 
 ### 3. TYPE_AndruavMessage_AI_Recognition_TargetLocation (1078) ⚠️ YOLO Dependency
 **Purpose**: Receive detected object locations from YOLO modules
@@ -115,6 +116,12 @@ OR
 **Processing**: 
 - "t" field: Logs all detected objects for debugging
 - "b" field: Extracts best object coordinates and forwards to tracking engine
+
+**AI Feedback Integration**:
+The tracker module uses AI feedback to update tracking coordinates in real-time:
+1. **Status Updates**: `m_tracker_main.setAITrackerStatus(status)` synchronizes AI recognition status with the tracker
+2. **Location Updates**: `m_tracker_main.onAITrackerBestRect(x, y, w, h)` forwards the best detected object coordinates to the tracking engine
+3. **Coordinate Processing**: Converts YOLO bounding box coordinates to tracker coordinate system (center point calculation)
 
 ### 4. TYPE_AndruavMessage_RemoteExecute (1005)
 **Purpose**: Execute remote commands on the tracker module
@@ -235,12 +242,12 @@ Detection → Processing → Status Updates
 ### Message Type Constants
 ```cpp
 #define TYPE_AndruavMessage_TrackingTarget_ACTION           1042
-#define TYPE_AndruavMessage_TrackingTargetLocation         1043
+#define TYPE_AndruavMessage_TrackingTargetLocation          1043
 #define TYPE_AndruavMessage_TargetTracking_STATUS           1044
 #define TYPE_AndruavMessage_AI_Recognition_STATUS           1077
 #define TYPE_AndruavMessage_AI_Recognition_TargetLocation   1078
 #define TYPE_AndruavMessage_RemoteExecute                   1005
-#define TYPE_AndruavMessage_CONFIG_ACTION                    1025
+#define TYPE_AndruavMessage_CONFIG_ACTION                   1025
 ```
 
 ### Action Constants
@@ -295,6 +302,7 @@ const float w = obj["w"].get<float>();
 const float h = obj["h"].get<float>();
 
 // To tracker coordinate system
+// values ranges from -0.5 to + 0.5
 const float centerX = -0.5 + x + w / 2.0;
 const float centerY = -0.5 + y + h / 2.0;
 ```
