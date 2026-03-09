@@ -13,12 +13,23 @@
 
 
 #include "../de_common/helpers/json_nlohmann.hpp"
+#include <vector>
+#include <chrono>
 using Json_de = nlohmann::json;
 
 namespace de
 {
 namespace tracker
 {
+
+    struct AIDetection {
+        float x, y, w, h;
+        float confidence;
+        std::chrono::steady_clock::time_point timestamp;
+        
+        AIDetection(float x_, float y_, float w_, float h_, float conf)
+            : x(x_), y(y_), w(w_), h(h_), confidence(conf), timestamp(std::chrono::steady_clock::now()) {}
+    };
 
     class CTrackerMain: public de::tracker::CCallBack_Tracker, de::comm::CCommon_Callback
     {
@@ -77,7 +88,13 @@ namespace tracker
         public:
             
             void onAITrackerBestRect(const float x, const float y, const float w, const float h);
-            
+            void onAITrackerBestRectWithConfidence(const float x, const float y, const float w, const float h, const float confidence);
+            bool shouldReinitializeTracker(const AIDetection& detection);
+            bool hasConsistentDetections();
+            float calculateDetectionStability();
+            bool shouldContinueTracking();
+            void onTrackerLost();
+            void onTrackerRecovered();
             
         public:
             inline void setAITrackerStatus(const int status)
@@ -125,6 +142,17 @@ namespace tracker
             int m_tracker_status = TrackingTarget_STATUS_TRACKING_STOPPED;
             int m_ai_tracker_status = TrackingTarget_STATUS_AI_Recognition_DISABLED;
             
+            // AI Detection Buffer for temporal smoothing
+            std::vector<AIDetection> m_ai_detection_buffer;
+            int AI_DETECTION_BUFFER_SIZE = 5;
+            float MIN_AI_CONFIDENCE_THRESHOLD = 0.5f;
+            float MIN_DETECTION_STABILITY_THRESHOLD = 0.7f;
+            int DETECTION_TIMEOUT_MS = 2000;
+            
+            // Tracker recovery behavior
+            bool m_ai_assisted_recovery_enabled = true;
+            int m_tracker_lost_timeout_ms = 10000;  // 10 seconds timeout before requiring manual intervention
+            std::chrono::steady_clock::time_point m_tracker_lost_timestamp;
             
             bool m_ema_init = false;
             double m_ema_x = 0, m_ema_y = 0;

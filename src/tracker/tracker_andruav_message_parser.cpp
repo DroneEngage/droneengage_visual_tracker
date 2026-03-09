@@ -142,16 +142,22 @@ void CTrackerAndruavMessageParser::parseCommand(Json_de &andruav_message, const 
             const float y = obj["y"].get<float>();
             const float w = obj["w"].get<float>();
             const float h = obj["h"].get<float>();
+            
+            // Extract confidence if available, default to 1.0 for backward compatibility
+            float confidence = 1.0f;
+            if (obj.contains("conf") && obj["conf"].is_number()) {
+                confidence = obj["conf"].get<float>();
+            }
 
             const float centerX = -0.5 + x + w / 2.0;
             const float centerY = -0.5 + y + h / 2.0;
 
 #ifdef DDEBUG
             std::cout << "Best AI Object:" << obj.dump() << std::endl;
-            std::cout << "Best AI Object:" << centerX << ":" << centerY << std::endl;
+            std::cout << "Best AI Object:" << centerX << ":" << centerY << " conf:" << confidence << std::endl;
 #endif
 
-            m_tracker_main.onAITrackerBestRect(x, y, w, h);
+            m_tracker_main.onAITrackerBestRectWithConfidence(x, y, w, h, confidence);
         }
     }
     break;
