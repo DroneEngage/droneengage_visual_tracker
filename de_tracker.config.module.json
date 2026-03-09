@@ -1,5 +1,4 @@
 {
-    // A name and GUID for this module
     "module_id": "VIS_TRK_PRO",
     "s2s_udp_target_ip": "127.0.0.1",
     "s2s_udp_target_port": "60000",
@@ -22,9 +21,9 @@
     */
     "camera": {
         // Specific Module Parameters
-        //"source_video_device"               : "/dev/video0",
+        "source_video_device"               : "/dev/video0",
         //"output_video_device": "/dev/video3"
-        "source_video_device_name"          : "DE-CAM1", //"SIM-CAM1", //"C270 HD WEBCAM",  // DE-RPI,DE-THERMAL,
+        //"source_video_device_name"          : "DE-CAM1", //"SIM-CAM1", //"C270 HD WEBCAM",  // DE-RPI,DE-THERMAL,
         "output_video_device_name"          : "DE-TRK"
         //"desired_input_width"               : 1280,
         //"desired_input_height"              : 720
@@ -34,12 +33,17 @@
         "camera_orientation": 0, // 0b0000 bit:0 horizontal/vertical, bits1,2: rotation (0,90,180,270)
         "camera_flipped": false,
         "tracking_camera_direction": 1,  // none, front , back , down , up 
-        "crosshair": true
+        "crosshair": false
     },
-    // Advanced Parameters:
     "advanced_tracking": {
-        "frames_to_skip_between_messages": 3, //optional default: 15
-        "frame_to_skip_between_track_process": 2, //optional default: 5
-        "ema_alpha_base": 0.3
+        "frames_to_skip_between_messages": 3,
+        "frame_to_skip_between_track_process": 2,
+        "ema_alpha_base": 0.3,
+        "ai_confidence_threshold": 0.6,
+        "ai_stability_threshold": 0.75,
+        "ai_detection_buffer_size": 5,
+        "ai_detection_timeout_ms": 2000,
+        "ai_assisted_recovery_enabled": true,
+        "tracker_lost_timeout_ms": 10000
     }
 }

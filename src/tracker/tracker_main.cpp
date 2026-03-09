@@ -1,6 +1,7 @@
 #include <algorithm>
 #include <iostream>
 #include <stdio.h>
+#include <cmath>
 
 #include "../de_common/de_databus/configFile.hpp"
 #include "../de_common/de_databus/messages.hpp"
@@ -295,6 +296,32 @@ bool CTrackerMain::readConfigParameters() {
       m_ema_alpha_base = advanced_tracking["ema_alpha_base"].get<double>();
     }
 
+    // Load AI enhancement parameters
+    if (advanced_tracking.contains("ai_confidence_threshold")) {
+      MIN_AI_CONFIDENCE_THRESHOLD = advanced_tracking["ai_confidence_threshold"].get<float>();
+    }
+    
+    if (advanced_tracking.contains("ai_stability_threshold")) {
+      MIN_DETECTION_STABILITY_THRESHOLD = advanced_tracking["ai_stability_threshold"].get<float>();
+    }
+    
+    if (advanced_tracking.contains("ai_detection_buffer_size")) {
+      AI_DETECTION_BUFFER_SIZE = advanced_tracking["ai_detection_buffer_size"].get<int>();
+    }
+    
+    if (advanced_tracking.contains("ai_detection_timeout_ms")) {
+      DETECTION_TIMEOUT_MS = advanced_tracking["ai_detection_timeout_ms"].get<int>();
+    }
+    
+    // Load tracker recovery parameters
+    if (advanced_tracking.contains("ai_assisted_recovery_enabled")) {
+      m_ai_assisted_recovery_enabled = advanced_tracking["ai_assisted_recovery_enabled"].get<bool>();
+    }
+    
+    if (advanced_tracking.contains("tracker_lost_timeout_ms")) {
+      m_tracker_lost_timeout_ms = advanced_tracking["tracker_lost_timeout_ms"].get<int>();
+    }
+
     std::cout << _SUCCESS_CONSOLE_BOLD_TEXT_
               << "Field Found: advanced_tracking field found:  "
               << _INFO_CONSOLE_TEXT
@@ -309,7 +336,15 @@ bool CTrackerMain::readConfigParameters() {
             << _LOG_CONSOLE_BOLD_TEXT << m_frame_to_skip_between_track_process
             << _INFO_CONSOLE_TEXT
             << ", ema_alpha_base: " << _LOG_CONSOLE_BOLD_TEXT
-            << m_ema_alpha_base << _NORMAL_CONSOLE_TEXT_ << std::endl;
+            << m_ema_alpha_base << _INFO_CONSOLE_TEXT
+            << ", ai_confidence_threshold: " << _LOG_CONSOLE_BOLD_TEXT
+            << MIN_AI_CONFIDENCE_THRESHOLD << _INFO_CONSOLE_TEXT
+            << ", ai_stability_threshold: " << _LOG_CONSOLE_BOLD_TEXT
+            << MIN_DETECTION_STABILITY_THRESHOLD << _INFO_CONSOLE_TEXT
+            << ", ai_assisted_recovery_enabled: " << _LOG_CONSOLE_BOLD_TEXT
+            << (m_ai_assisted_recovery_enabled ? "true" : "false") << _INFO_CONSOLE_TEXT
+            << ", tracker_lost_timeout_ms: " << _LOG_CONSOLE_BOLD_TEXT
+            << m_tracker_lost_timeout_ms << _NORMAL_CONSOLE_TEXT_ << std::endl;
 
   return true;
 }
@@ -495,14 +530,15 @@ void CTrackerMain::onTrackStatusChanged(const int &status) {
 
   m_tracker_facade.sendTrackingTargetStatus(std::string(""), status);
 
-  if (((m_tracker_status == TrackingTarget_STATUS_TRACKING_LOST) ||
-       (m_tracker_status == TrackingTarget_STATUS_TRACKING_ENABLED)) &&
-      (m_ai_tracker_status != TrackingTarget_ACTION_AI_Recognition_ENABLE)) {
-    // NO AI to Help
-    // Brake Mode
-    std::cout << _ERROR_CONSOLE_BOLD_TEXT_ << "CANNOT CONTINUE TRACKING..."
-              << _NORMAL_CONSOLE_TEXT_ << std::endl;
+  // Handle tracker status changes with improved recovery logic
+  if (status == TrackingTarget_STATUS_TRACKING_LOST) {
+    onTrackerLost();
+  } else if (status == TrackingTarget_STATUS_TRACKING_DETECTED) {
+    onTrackerRecovered();
   }
+
+  // Remove the problematic "Brake Mode" logic - tracker should continue operating
+  // and wait for AI assistance or manual recovery instead of shutting down
 
 #ifdef DDEBUG
   std::cout << _INFO_CONSOLE_BOLD_TEXT
@@ -512,17 +548,214 @@ void CTrackerMain::onTrackStatusChanged(const int &status) {
 #endif
 }
 
+void CTrackerMain::onTrackerLost() {
+  m_tracker_lost_timestamp = std::chrono::steady_clock::now();
+  
+#ifdef DDEBUG
+  std::cout << _INFO_CONSOLE_BOLD_TEXT << "Tracker lost - waiting for recovery..." 
+            << _NORMAL_CONSOLE_TEXT_ << std::endl;
+#endif
+}
+
+void CTrackerMain::onTrackerRecovered() {
+#ifdef DDEBUG
+  std::cout << _INFO_CONSOLE_BOLD_TEXT << "Tracker recovered successfully!" 
+            << _NORMAL_CONSOLE_TEXT_ << std::endl;
+#endif
+}
+
+bool CTrackerMain::shouldContinueTracking() {
+  // Always continue tracking unless explicitly stopped
+  if (m_tracker_status == TrackingTarget_STATUS_TRACKING_STOPPED) {
+    return false;
+  }
+  
+  // If AI assisted recovery is disabled and tracker is lost, check timeout
+  if (!m_ai_assisted_recovery_enabled && 
+      m_tracker_status == TrackingTarget_STATUS_TRACKING_LOST) {
+    
+    auto now = std::chrono::steady_clock::now();
+    auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now - m_tracker_lost_timestamp);
+    
+    if (elapsed.count() > m_tracker_lost_timeout_ms) {
+      std::cout << _INFO_CONSOLE_BOLD_TEXT 
+                << "Tracker lost timeout exceeded - manual intervention required" 
+                << _NORMAL_CONSOLE_TEXT_ << std::endl;
+      return false;
+    }
+  }
+  
+  return true;
+}
+
 void CTrackerMain::onAITrackerBestRect(const float x, const float y,
                                        const float w, const float h) {
+  // Legacy method - assume high confidence for backward compatibility
+  onAITrackerBestRectWithConfidence(x, y, w, h, 1.0f);
+}
+
+void CTrackerMain::onAITrackerBestRectWithConfidence(const float x, const float y,
+                                                     const float w, const float h, const float confidence) {
   m_ai_tracker_status = TrackingTarget_STATUS_AI_Recognition_DETECTED;
 
 #ifdef DEBUG
-  std::cout << "onAITrackerBestRect:" << m_tracker_status << std::endl;
+  std::cout << "onAITrackerBestRectWithConfidence:" << m_tracker_status 
+            << " confidence:" << confidence << std::endl;
 #endif
-  if ((m_tracker_status == TrackingTarget_STATUS_TRACKING_LOST) ||
-      (m_tracker_status == TrackingTarget_STATUS_TRACKING_ENABLED)) {
-    std::cout << _INFO_CONSOLE_BOLD_TEXT << "ai_rect:" << x << ":" << y << ":"
-              << w << ":" << h << std::endl;
-    startTrackingRect(x, y, w, h);
+
+  // Apply confidence threshold filtering
+  if (confidence < MIN_AI_CONFIDENCE_THRESHOLD) {
+#ifdef DDEBUG
+    std::cout << _INFO_CONSOLE_BOLD_TEXT << "AI detection filtered out due to low confidence: " 
+              << _LOG_CONSOLE_BOLD_TEXT << confidence << _NORMAL_CONSOLE_TEXT_ << std::endl;
+#endif
+    return;
   }
+
+  // Create detection record
+  AIDetection detection(x, y, w, h, confidence);
+  
+  // Check if we should reinitialize tracker based on temporal consistency
+  if (shouldReinitializeTracker(detection)) {
+    if ((m_tracker_status == TrackingTarget_STATUS_TRACKING_LOST) ||
+        (m_tracker_status == TrackingTarget_STATUS_TRACKING_ENABLED)) {
+      std::cout << _INFO_CONSOLE_BOLD_TEXT << "ai_rect (stable):" << x << ":" << y << ":"
+                << w << ":" << h << " conf:" << confidence << std::endl;
+      startTrackingRect(x, y, w, h);
+    }
+  } else {
+#ifdef DDEBUG
+    std::cout << _INFO_CONSOLE_BOLD_TEXT << "AI detection rejected due to temporal instability" 
+              << _NORMAL_CONSOLE_TEXT_ << std::endl;
+#endif
+  }
+}
+
+bool CTrackerMain::shouldReinitializeTracker(const AIDetection& detection) {
+  // Add new detection to buffer
+  m_ai_detection_buffer.push_back(detection);
+  
+  // Remove old detections beyond buffer size
+  while (m_ai_detection_buffer.size() > AI_DETECTION_BUFFER_SIZE) {
+    m_ai_detection_buffer.erase(m_ai_detection_buffer.begin());
+  }
+  
+  // Remove old detections beyond timeout
+  auto now = std::chrono::steady_clock::now();
+  for (auto it = m_ai_detection_buffer.begin(); it != m_ai_detection_buffer.end(); ) {
+    auto age = std::chrono::duration_cast<std::chrono::milliseconds>(now - it->timestamp);
+    if (age.count() > DETECTION_TIMEOUT_MS) {
+      it = m_ai_detection_buffer.erase(it);
+    } else {
+      ++it;
+    }
+  }
+  
+  // Check if we have enough detections for stability assessment
+  if (m_ai_detection_buffer.size() < 3) {
+    return false;  // Need at least 3 detections for stability
+  }
+  
+  // Calculate detection stability
+  float stability = calculateDetectionStability();
+  
+#ifdef DDEBUG
+  std::cout << _INFO_CONSOLE_BOLD_TEXT << "Detection stability: " 
+            << _LOG_CONSOLE_BOLD_TEXT << stability << _NORMAL_CONSOLE_TEXT_ << std::endl;
+#endif
+  
+  return stability >= MIN_DETECTION_STABILITY_THRESHOLD;
+}
+
+bool CTrackerMain::hasConsistentDetections() {
+  if (m_ai_detection_buffer.size() < 3) {
+    return false;
+  }
+  
+  // Check if all recent detections meet minimum confidence
+  for (const auto& det : m_ai_detection_buffer) {
+    if (det.confidence < MIN_AI_CONFIDENCE_THRESHOLD) {
+      return false;
+    }
+  }
+  
+  // Check positional consistency (detections should be relatively close)
+  const AIDetection& latest = m_ai_detection_buffer.back();
+  for (size_t i = 0; i < m_ai_detection_buffer.size() - 1; ++i) {
+    const AIDetection& prev = m_ai_detection_buffer[i];
+    
+    // Calculate center points
+    float latest_center_x = latest.x + latest.w / 2.0f;
+    float latest_center_y = latest.y + latest.h / 2.0f;
+    float prev_center_x = prev.x + prev.w / 2.0f;
+    float prev_center_y = prev.y + prev.h / 2.0f;
+    
+    // Calculate distance between centers
+    float distance = std::sqrt(
+      std::pow(latest_center_x - prev_center_x, 2) + 
+      std::pow(latest_center_y - prev_center_y, 2)
+    );
+    
+    // If distance is too large, detections are inconsistent
+    if (distance > 0.2f) {  // 20% of image dimension
+      return false;
+    }
+  }
+  
+  return true;
+}
+
+float CTrackerMain::calculateDetectionStability() {
+  if (m_ai_detection_buffer.size() < 2) {
+    return 0.0f;
+  }
+  
+  float stability_score = 0.0f;
+  const AIDetection& latest = m_ai_detection_buffer.back();
+  
+  // Factor 1: Confidence consistency (40% weight)
+  float avg_confidence = 0.0f;
+  float confidence_variance = 0.0f;
+  
+  for (const auto& det : m_ai_detection_buffer) {
+    avg_confidence += det.confidence;
+  }
+  avg_confidence /= m_ai_detection_buffer.size();
+  
+  for (const auto& det : m_ai_detection_buffer) {
+    confidence_variance += std::pow(det.confidence - avg_confidence, 2);
+  }
+  confidence_variance /= m_ai_detection_buffer.size();
+  
+  float confidence_stability = 1.0f - std::min(confidence_variance, 1.0f);
+  stability_score += 0.4f * confidence_stability;
+  
+  // Factor 2: Positional consistency (40% weight)
+  float positional_variance = 0.0f;
+  float latest_center_x = latest.x + latest.w / 2.0f;
+  float latest_center_y = latest.y + latest.h / 2.0f;
+  
+  for (size_t i = 0; i < m_ai_detection_buffer.size() - 1; ++i) {
+    const AIDetection& prev = m_ai_detection_buffer[i];
+    float prev_center_x = prev.x + prev.w / 2.0f;
+    float prev_center_y = prev.y + prev.h / 2.0f;
+    
+    float distance = std::sqrt(
+      std::pow(latest_center_x - prev_center_x, 2) + 
+      std::pow(latest_center_y - prev_center_y, 2)
+    );
+    positional_variance += distance;
+  }
+  
+  positional_variance /= (m_ai_detection_buffer.size() - 1);
+  float positional_stability = std::max(0.0f, 1.0f - positional_variance * 5.0f);  // Scale factor
+  stability_score += 0.4f * positional_stability;
+  
+  // Factor 3: Temporal consistency (20% weight)
+  auto now = std::chrono::steady_clock::now();
+  auto age_ms = std::chrono::duration_cast<std::chrono::milliseconds>(now - latest.timestamp);
+  float temporal_factor = 1.0f - std::min(age_ms.count() / 1000.0f, 1.0f);  // Decay over 1 second
+  stability_score += 0.2f * temporal_factor;
+  
+  return std::min(stability_score, 1.0f);
 }
