@@ -149,6 +149,9 @@ namespace tracker
             float MIN_DETECTION_STABILITY_THRESHOLD = 0.7f;
             int DETECTION_TIMEOUT_MS = 2000;
             
+            // Flag to indicate waiting for first AI detection after enableTracking()
+            bool m_waiting_for_first_ai_detection = false;
+            
             // Tracker recovery behavior
             bool m_ai_assisted_recovery_enabled = true;
             int m_tracker_lost_timeout_ms = 10000;  // 10 seconds timeout before requiring manual intervention

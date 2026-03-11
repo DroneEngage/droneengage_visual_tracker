@@ -375,6 +375,9 @@ void CTrackerMain::startTrackingRect(const float x, const float y,
   if (m_tracker_status == TrackingTarget_STATUS_TRACKING_STOPPED)
     return;
 
+  // Reset AI detection waiting state when manual tracking starts
+  m_waiting_for_first_ai_detection = false;
+
   m_tracker.get()->stop();
 
   m_tracker.get()->trackRect(x, y, w, h);
@@ -386,6 +389,10 @@ void CTrackerMain::enableTracking() {
   // this state means I will accept start tracking point.
   // this is not a real start for the tracker core.
   m_tracker_status = TrackingTarget_STATUS_TRACKING_ENABLED;
+  
+  // Clear AI detection buffer when enabling tracking to start fresh
+  m_ai_detection_buffer.clear();
+  m_waiting_for_first_ai_detection = true;
 
   // ACK
   m_tracker_facade.sendTrackingTargetStatus(std::string(""), m_tracker_status);
@@ -396,6 +403,10 @@ void CTrackerMain::pauseTracking() { m_tracker.get()->pause(); }
 void CTrackerMain::stopTracking() {
   m_tracker_status = TrackingTarget_STATUS_TRACKING_STOPPED;
   m_tracker.get()->stop();
+  
+  // Reset AI detection waiting state
+  m_waiting_for_first_ai_detection = false;
+  m_ai_detection_buffer.clear();
 
   m_tracker_facade.sendTrackingTargetStatus(std::string(""), m_tracker_status);
 }
@@ -609,6 +620,15 @@ void CTrackerMain::onAITrackerBestRectWithConfidence(const float x, const float 
     std::cout << _INFO_CONSOLE_BOLD_TEXT << "AI detection filtered out due to low confidence: " 
               << _LOG_CONSOLE_BOLD_TEXT << confidence << _NORMAL_CONSOLE_TEXT_ << std::endl;
 #endif
+    return;
+  }
+
+  // If we're waiting for the first AI detection after enableTracking(), start immediately
+  if (m_waiting_for_first_ai_detection && (m_tracker_status == TrackingTarget_STATUS_TRACKING_ENABLED)) {
+    std::cout << _INFO_CONSOLE_BOLD_TEXT << "ai_rect (first detection):" << x << ":" << y << ":"
+              << w << ":" << h << " conf:" << confidence << std::endl;
+    startTrackingRect(x, y, w, h);
+    m_waiting_for_first_ai_detection = false;
     return;
   }
 
