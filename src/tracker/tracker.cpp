@@ -296,14 +296,23 @@ void CTracker::stop() {
 
 void CTracker::trackRect(const float x, const float y, const float w,
                          const float h) {
+  trackRect(x, y, w, h, false);  // Default: not AI-driven
+}
+
+void CTracker::trackRect(const float x, const float y, const float w,
+                         const float h, bool is_ai_driven) {
   m_valid_track = false;
+  
+  // Set AI-driven flag for this tracking session
+  m_is_ai_driven_reinit = is_ai_driven;
 
   std::cout << _INFO_CONSOLE_BOLD_TEXT << "X:" << _LOG_CONSOLE_TEXT
             << std::to_string(x) << _INFO_CONSOLE_BOLD_TEXT
             << ",Y:" << _LOG_CONSOLE_TEXT << std::to_string(y)
             << _INFO_CONSOLE_BOLD_TEXT << ",W:" << _LOG_CONSOLE_TEXT
             << std::to_string(w) << ",H:" << _LOG_CONSOLE_TEXT
-            << std::to_string(h) << _NORMAL_CONSOLE_TEXT_ << std::endl;
+            << std::to_string(h) << (is_ai_driven ? " (AI-driven)" : " (manual)") 
+            << _NORMAL_CONSOLE_TEXT_ << std::endl;
 
   if (m_video_path == std::string("")) {
     // TODO: send error message.
@@ -379,7 +388,11 @@ void CTracker::track2Rect(const float x, const float y, const float w,
   cv::Rect2d bbox_2d(scaled_x, scaled_y, scaled_width, scaled_height);
   cv::Rect bbox(bbox_2d);
 
-  m_is_tracking_active_initial = (x > 0);
+  // Validate tracking rectangle based on dimensions and bounds, not position
+  // x=0 is valid (left edge of frame), so check width/height instead
+  m_is_tracking_active_initial = (w > 0.01f && h > 0.01f && 
+                                  x >= 0.0f && y >= 0.0f && 
+                                  (x + w) <= 1.0f && (y + h) <= 1.0f);
   if (m_is_tracking_active_initial) {
     // Re-initialize tracker with the new bounding box on the first frame
     if (m_islegacy)
@@ -555,6 +568,12 @@ void CTracker::track2Rect(const float x, const float y, const float w,
     ++frame_counter;
   } // End of while (m_process) loop
 
-  std::cout << _LOG_CONSOLE_BOLD_TEXT << "tracking off" << _NORMAL_CONSOLE_TEXT_
-            << std::endl;
+  // Only print "tracking off" for non-AI-driven reinitializations
+  if (!m_is_ai_driven_reinit) {
+    std::cout << _LOG_CONSOLE_BOLD_TEXT << "tracking off" << _NORMAL_CONSOLE_TEXT_
+              << std::endl;
+  }
+  
+  // Reset AI-driven flag
+  m_is_ai_driven_reinit = false;
 }

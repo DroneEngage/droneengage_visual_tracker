@@ -83,6 +83,7 @@ public:
   bool uninit();
   void track(const float x, const float y, const float radius);
   void trackRect(const float x, const float y, const float w, const float h);
+  void trackRect(const float x, const float y, const float w, const float h, bool is_ai_driven);
   void track2Rect(const float x, const float y, const float w, const float h);
   void pause();
   void stop();
@@ -112,6 +113,7 @@ protected:
 private:
   bool m_process = false;
   bool m_valid_track;
+  bool m_is_ai_driven_reinit = false;  // Flag to suppress "tracking off" during AI reinitializations
 
   bool m_islegacy = false;
   std::string m_video_path;

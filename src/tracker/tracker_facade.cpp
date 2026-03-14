@@ -31,9 +31,11 @@ void CTracker_Facade::sendTrackingTargetStatus(
 
   const uint8_t tracking_camera_direction =
       m_tracker_main.getTrackingCameraDirection();
+  const bool ai_priority = m_tracker_main.getAiPriority();
   Json_de message = {
       {"a", status},
-      {"b", tracking_camera_direction}
+      {"b", tracking_camera_direction},
+      {"c", ai_priority}
   };
 
   m_module.sendJMSG(target_party_id, message,
