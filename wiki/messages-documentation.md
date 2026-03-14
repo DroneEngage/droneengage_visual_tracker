@@ -59,6 +59,8 @@ AI Detection → Track Processing → Status Updates
 | 3 | `TrackingTarget_ACTION_TRACKING_PAUSE` | Pause tracking | None |
 | 4 | `TrackingTarget_ACTION_TRACKING_ENABLE` | Enable tracking | None |
 | 5 | `TrackingTarget_ACTION_TRACKING_QUERY_CONFIG` | Request configuration | None |
+| 6 | `TrackingTarget_ACTION_TRACKING_AI_DRIVER_ENABLED` | Enable AI priority mode | None |
+| 7 | `TrackingTarget_ACTION_TRACKING_AI_DRIVER_DISABLED` | Disable AI priority mode | None |
 
 **Parser Location**: `tracker_andruav_message_parser.cpp` - `parseCommand()` method
 
@@ -258,6 +260,8 @@ Detection → Processing → Status Updates
 #define TrackingTarget_ACTION_TRACKING_PAUSE               3
 #define TrackingTarget_ACTION_TRACKING_ENABLE              4
 #define TrackingTarget_ACTION_TRACKING_QUERY_CONFIG        5
+#define TrackingTarget_ACTION_TRACKING_AI_DRIVER_ENABLED   6
+#define TrackingTarget_ACTION_TRACKING_AI_DRIVER_DISABLED  7
 ```
 
 ### AI Status Constants

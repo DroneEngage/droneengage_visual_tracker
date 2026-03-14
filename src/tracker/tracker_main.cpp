@@ -318,6 +318,14 @@ bool CTrackerMain::readConfigParameters() {
       m_ai_assisted_recovery_enabled = advanced_tracking["ai_assisted_recovery_enabled"].get<bool>();
     }
     
+    if (advanced_tracking.contains("ai_priority")) {
+      m_ai_priority = advanced_tracking["ai_priority"].get<bool>();
+    }
+    
+    if (advanced_tracking.contains("ai_priority_distance_threshold")) {
+      m_ai_priority_distance_threshold = advanced_tracking["ai_priority_distance_threshold"].get<float>();
+    }
+    
     if (advanced_tracking.contains("tracker_lost_timeout_ms")) {
       m_tracker_lost_timeout_ms = advanced_tracking["tracker_lost_timeout_ms"].get<int>();
     }
@@ -343,6 +351,10 @@ bool CTrackerMain::readConfigParameters() {
             << MIN_DETECTION_STABILITY_THRESHOLD << _INFO_CONSOLE_TEXT
             << ", ai_assisted_recovery_enabled: " << _LOG_CONSOLE_BOLD_TEXT
             << (m_ai_assisted_recovery_enabled ? "true" : "false") << _INFO_CONSOLE_TEXT
+            << ", ai_priority: " << _LOG_CONSOLE_BOLD_TEXT
+            << (m_ai_priority ? "true" : "false") << _INFO_CONSOLE_TEXT
+            << ", ai_priority_distance_threshold: " << _LOG_CONSOLE_BOLD_TEXT
+            << m_ai_priority_distance_threshold << _INFO_CONSOLE_TEXT
             << ", tracker_lost_timeout_ms: " << _LOG_CONSOLE_BOLD_TEXT
             << m_tracker_lost_timeout_ms << _NORMAL_CONSOLE_TEXT_ << std::endl;
 
@@ -366,10 +378,10 @@ bool CTrackerMain::uninit() {
 }
 
 void CTrackerMain::startTrackingRect(const float x, const float y,
-                                     const float w, const float h) {
+                                     const float w, const float h, bool is_ai_driven) {
 #ifdef DEBUG
   std::cout << _INFO_CONSOLE_BOLD_TEXT << "rect:" << x << ":" << y << ":" << w
-            << ":" << h << std::endl;
+            << ":" << h << (is_ai_driven ? " (AI-driven)" : " (manual)") << std::endl;
 #endif
 
   if (m_tracker_status == TrackingTarget_STATUS_TRACKING_STOPPED)
@@ -378,9 +390,17 @@ void CTrackerMain::startTrackingRect(const float x, const float y,
   // Reset AI detection waiting state when manual tracking starts
   m_waiting_for_first_ai_detection = false;
 
-  m_tracker.get()->stop();
-
-  m_tracker.get()->trackRect(x, y, w, h);
+  // For AI-driven updates during lost tracking, try to be more seamless
+  if (is_ai_driven) {
+    // Don't print "tracking off" for AI-driven recovery
+    // We still need to stop and restart the tracker, but we'll suppress the message
+    m_tracker.get()->stop();
+    m_tracker.get()->trackRect(x, y, w, h, true);  // AI-driven
+  } else {
+    // For manual commands or other cases, allow normal behavior
+    m_tracker.get()->stop();
+    m_tracker.get()->trackRect(x, y, w, h, false);  // Manual
+  }
 
   m_tracker_facade.sendTrackingTargetStatus(std::string(""), m_tracker_status);
 }
@@ -592,6 +612,7 @@ bool CTrackerMain::shouldContinueTracking() {
       std::cout << _INFO_CONSOLE_BOLD_TEXT 
                 << "Tracker lost timeout exceeded - manual intervention required" 
                 << _NORMAL_CONSOLE_TEXT_ << std::endl;
+                // WE SHOULD SEND MESSAGE TO GCS HERE
       return false;
     }
   }
@@ -627,7 +648,7 @@ void CTrackerMain::onAITrackerBestRectWithConfidence(const float x, const float 
   if (m_waiting_for_first_ai_detection && (m_tracker_status == TrackingTarget_STATUS_TRACKING_ENABLED)) {
     std::cout << _INFO_CONSOLE_BOLD_TEXT << "ai_rect (first detection):" << x << ":" << y << ":"
               << w << ":" << h << " conf:" << confidence << std::endl;
-    startTrackingRect(x, y, w, h);
+    startTrackingRect(x, y, w, h, true);  // AI-driven
     m_waiting_for_first_ai_detection = false;
     return;
   }
@@ -641,13 +662,22 @@ void CTrackerMain::onAITrackerBestRectWithConfidence(const float x, const float 
         (m_tracker_status == TrackingTarget_STATUS_TRACKING_ENABLED)) {
       std::cout << _INFO_CONSOLE_BOLD_TEXT << "ai_rect (stable):" << x << ":" << y << ":"
                 << w << ":" << h << " conf:" << confidence << std::endl;
-      startTrackingRect(x, y, w, h);
+      startTrackingRect(x, y, w, h, true);  // AI-driven
     }
   } else {
 #ifdef DDEBUG
     std::cout << _INFO_CONSOLE_BOLD_TEXT << "AI detection rejected due to temporal instability" 
               << _NORMAL_CONSOLE_TEXT_ << std::endl;
 #endif
+  }
+  
+  // NEW: AI Priority logic - switch to AI even when actively tracking
+  if (m_ai_priority && m_tracker_status == TrackingTarget_STATUS_TRACKING_DETECTED) {
+    if (isTrackingRectOutOfAISquare(x, y, w, h) && shouldReinitializeTracker(detection)) {
+      std::cout << _INFO_CONSOLE_BOLD_TEXT << "ai_rect (priority override):" << x << ":" << y << ":"
+                << w << ":" << h << " conf:" << confidence << std::endl;
+      startTrackingRect(x, y, w, h, true);  // AI-driven
+    }
   }
 }
 
@@ -778,4 +808,38 @@ float CTrackerMain::calculateDetectionStability() {
   stability_score += 0.2f * temporal_factor;
   
   return std::min(stability_score, 1.0f);
+}
+
+bool CTrackerMain::isTrackingRectOutOfAISquare(const float ai_x, const float ai_y, const float ai_w, const float ai_h) {
+  // We need to get the current tracking rectangle from the tracker
+  // Since we don't have direct access to the current tracking rect, we'll need to store it
+  // For now, let's implement a basic version that assumes we can get the current tracking info
+  
+  // Calculate AI detection center
+  float ai_center_x = ai_x + ai_w / 2.0f;
+  float ai_center_y = ai_y + ai_h / 2.0f;
+  
+  // For now, we'll use the last EMA values as a proxy for current tracking position
+  // This is a limitation - ideally we should store the actual tracking rectangle
+  float tracking_center_x = static_cast<float>(m_ema_x) + 0.5f;  // Convert from [-0.5,0.5] to [0,1]
+  float tracking_center_y = static_cast<float>(m_ema_y) + 0.5f;  // Convert from [-0.5,0.5] to [0,1]
+  
+  // Calculate distance between centers
+  float distance = std::sqrt(
+    std::pow(ai_center_x - tracking_center_x, 2) + 
+    std::pow(ai_center_y - tracking_center_y, 2)
+  );
+  
+  // Calculate image diagonal (normalized coordinates, so diagonal is sqrt(2))
+  float image_diagonal = std::sqrt(2.0f);
+  float threshold_distance = image_diagonal * m_ai_priority_distance_threshold;
+  
+#ifdef DDEBUG
+  std::cout << _INFO_CONSOLE_BOLD_TEXT << "AI Priority check - distance: " 
+            << _LOG_CONSOLE_BOLD_TEXT << distance << _INFO_CONSOLE_TEXT
+            << ", threshold: " << _LOG_CONSOLE_BOLD_TEXT << threshold_distance 
+            << _NORMAL_CONSOLE_TEXT_ << std::endl;
+#endif
+  
+  return distance > threshold_distance;
 }

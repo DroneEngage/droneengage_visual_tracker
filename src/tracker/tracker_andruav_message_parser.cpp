@@ -46,7 +46,7 @@ void CTrackerAndruavMessageParser::parseCommand(Json_de &andruav_message, const 
             if (r <= 0.01f)
                 break;
 
-            m_tracker_main.startTrackingRect(x, y, r, r);
+            m_tracker_main.startTrackingRect(x, y, r, r, m_tracker_main.getAiPriority());  // Manual command
         }
         break;
 
@@ -78,7 +78,7 @@ void CTrackerAndruavMessageParser::parseCommand(Json_de &andruav_message, const 
             if (h <= 0.01f)
                 break;
 
-            m_tracker_main.startTrackingRect(x, y, w, h);
+            m_tracker_main.startTrackingRect(x, y, w, h, m_tracker_main.getAiPriority());  // Manual command
         }
         break;
 
@@ -95,6 +95,14 @@ void CTrackerAndruavMessageParser::parseCommand(Json_de &andruav_message, const 
             break;
         case TrackingTarget_ACTION_TRACKING_QUERY_CONFIG:
             m_tracker_facade.sendTrackingConfig(andruav_message[ANDRUAV_PROTOCOL_SENDER].get<std::string>());
+            break;
+        case TrackingTarget_ACTION_TRACKING_AI_DRIVER_ENABLED:
+            m_tracker_main.setAiPriority(true);
+            std::cout << "AI Driver Enabled" << std::endl;
+            break;
+        case TrackingTarget_ACTION_TRACKING_AI_DRIVER_DISABLED:
+            m_tracker_main.setAiPriority(false);
+            std::cout << "AI Driver Disabled" << std::endl;
             break;
         }
     }

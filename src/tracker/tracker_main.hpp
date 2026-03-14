@@ -81,7 +81,7 @@ namespace tracker
         public:
             
             void enableTracking();
-            void startTrackingRect(const float x, const float y, const float w, const float h);
+            void startTrackingRect(const float x, const float y, const float w, const float h, bool is_ai_driven = false);
             void pauseTracking();
             void stopTracking();
 
@@ -93,6 +93,7 @@ namespace tracker
             bool hasConsistentDetections();
             float calculateDetectionStability();
             bool shouldContinueTracking();
+            bool isTrackingRectOutOfAISquare(const float ai_x, const float ai_y, const float ai_w, const float ai_h);
             void onTrackerLost();
             void onTrackerRecovered();
             
@@ -100,6 +101,7 @@ namespace tracker
             inline void setAITrackerStatus(const int status)
             {
                 m_ai_tracker_status = status;
+                m_tracker_facade.sendTrackingTargetStatus(std::string(""), m_tracker_status);
             }
 
             inline int getAITrackerStatus()
@@ -129,6 +131,16 @@ namespace tracker
             {
                 return m_tracking_camera_direction;
             }
+            inline void  setAiPriority(const bool priority)
+            {
+                m_ai_priority = priority;
+                m_tracker_facade.sendTrackingTargetStatus(std::string(""), m_tracker_status);
+
+            }
+            inline bool getAiPriority() const
+            {
+                return m_ai_priority;
+            }
         private:
             bool readConfigParameters();
             void reloadParametersIfConfigChanged();
@@ -154,6 +166,8 @@ namespace tracker
             
             // Tracker recovery behavior
             bool m_ai_assisted_recovery_enabled = true;
+            bool m_ai_priority = false;                   // Prioritize AI detections over current tracking
+            float m_ai_priority_distance_threshold = 0.2f; // Distance threshold for "out of square" (percentage of image diagonal)
             int m_tracker_lost_timeout_ms = 10000;  // 10 seconds timeout before requiring manual intervention
             std::chrono::steady_clock::time_point m_tracker_lost_timestamp;
             
