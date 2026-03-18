@@ -17,10 +17,10 @@
 #include "tracker/tracker_main.hpp"
 #include "tracker/tracker_andruav_message_parser.hpp"
 
-
+                        
 #define MESSAGE_FILTER {TYPE_AndruavMessage_TrackingTarget_ACTION,\
                         TYPE_AndruavMessage_TrackingTargetLocation,\
-                        TYPE_AndruavMessage_TargetTracking_STATUS,\
+                        TYPE_AndruavMessage_TrackingTarget_STATUS,\
                         TYPE_AndruavMessage_AI_Recognition_STATUS,\
                         TYPE_AndruavMessage_AI_Recognition_TargetLocation,\
                         TYPE_AndruavMessage_CONFIG_ACTION, \

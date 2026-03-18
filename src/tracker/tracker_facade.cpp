@@ -39,7 +39,7 @@ void CTracker_Facade::sendTrackingTargetStatus(
   };
 
   m_module.sendJMSG(target_party_id, message,
-                    TYPE_AndruavMessage_TargetTracking_STATUS, true);
+                    TYPE_AndruavMessage_TrackingTarget_STATUS, true);
 
 #ifdef DEBUG
   std::cout << "TrackingStatus:" << status << std::endl;
@@ -54,7 +54,7 @@ void CTracker_Facade::sendTrackingConfig(
   Json_de message = {{"a", 2}};
 
   m_module.sendJMSG(target_party_id, message,
-                    TYPE_AndruavMessage_TargetTracking_STATUS, true);
+                    TYPE_AndruavMessage_TrackingTarget_STATUS, true);
 
 #ifdef DEBUG
   std::cout << "TrackingStatus:" << "TO BE IMPLEMENTED" << std::endl;
