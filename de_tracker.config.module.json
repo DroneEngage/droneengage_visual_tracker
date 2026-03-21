@@ -21,7 +21,7 @@
     */
     "camera": {
         // Specific Module Parameters
-        "source_video_device"               : "/dev/video0",
+        "source_video_device"               : "/dev/video57", //57",
         //"output_video_device": "/dev/video3"
         //"source_video_device_name"          : "DE-CAM1", //"SIM-CAM1", //"C270 HD WEBCAM",  // DE-RPI,DE-THERMAL,
         "output_video_device_name"          : "DE-TRK"
@@ -32,11 +32,11 @@
         "tracker_algorithm_index": 7,
         "camera_orientation": 0, // 0b0000 bit:0 horizontal/vertical, bits1,2: rotation (0,90,180,270)
         "camera_flipped": false,
-        "tracking_camera_direction": 1,  // none, front , back , down , up 
+        "tracking_camera_direction": 4,  // none, front , back , down , up 
         "crosshair": false
     },
     "advanced_tracking": {
-        "frames_to_skip_between_messages": 3,
+        "frames_to_skip_between_messages": 2,
         "frame_to_skip_between_track_process": 2,
         "ema_alpha_base": 0.3,
         "ai_confidence_threshold": 0.6,         // Minimum confidence for AI detections
