@@ -28,9 +28,59 @@ message( FATAL_ERROR “In-source builds not allowed! Create a build directory a
 exit(1)
 endif()
 
-SET (__APP__VERSION__ "1.6.0")
+# ──────────────────────────────────────────────────────────────
+# Auto-increment version on each build
+# ──────────────────────────────────────────────────────────────
+set(VERSION_FILE "${CMAKE_SOURCE_DIR}/.version")
+
+# Manually set major, minor, and bugfix versions (you can change these)
+set(MAJOR_VERSION 1)
+set(MINOR_VERSION 7)
+set(BUGFIX_VERSION 0)
+
+if(EXISTS ${VERSION_FILE})
+    file(READ ${VERSION_FILE} CURRENT_VERSION)
+    string(STRIP "${CURRENT_VERSION}" CURRENT_VERSION)
+    # Extract current version components
+    string(REPLACE "." ";" VERSION_LIST ${CURRENT_VERSION})
+    list(LENGTH VERSION_LIST LIST_LENGTH)
+    if(LIST_LENGTH EQUAL 4)
+        list(GET VERSION_LIST 0 STORED_MAJOR)
+        list(GET VERSION_LIST 1 STORED_MINOR)
+        list(GET VERSION_LIST 2 STORED_BUGFIX)
+        list(GET VERSION_LIST 3 STORED_BUILD)
+        
+        # Check if major, minor, or bugfix version changed
+        if(NOT (${STORED_MAJOR} EQUAL ${MAJOR_VERSION} AND ${STORED_MINOR} EQUAL ${MINOR_VERSION} AND ${STORED_BUGFIX} EQUAL ${BUGFIX_VERSION}))
+            set(BUILD_VERSION 0)  # Reset build when major/minor/bugfix changes
+            message(STATUS "Version changed from ${STORED_MAJOR}.${STORED_MINOR}.${STORED_BUGFIX}.${STORED_BUILD} to ${MAJOR_VERSION}.${MINOR_VERSION}.${BUGFIX_VERSION}, resetting build to 0")
+        else()
+            set(BUILD_VERSION ${STORED_BUILD})  # Continue with existing build
+        endif()
+    else()
+        set(BUILD_VERSION 0)  # Default build version
+    endif()
+else()
+    set(BUILD_VERSION 0)  # Default build version
+endif()
+
+# Increment build version only for RELEASE builds
+IF(CMAKE_BUILD_TYPE MATCHES RELEASE)
+    math(EXPR BUILD_VERSION "${BUILD_VERSION} + 1")
+    message(STATUS "Incrementing build version for RELEASE build")
+ELSE()
+    message(STATUS "Non-release build - keeping current build version")
+ENDIF()
+
+# Create new version string
+set(__APP__VERSION__ "${MAJOR_VERSION}.${MINOR_VERSION}.${BUGFIX_VERSION}.${BUILD_VERSION}")
+
+message(STATUS "Building version: ${__APP__VERSION__}")
+message(STATUS "To change major/minor/bugfix versions, edit MAJOR_VERSION, MINOR_VERSION, and BUGFIX_VERSION above")
+
+SET (__APP__VERSION__ "${__APP__VERSION__}")
 add_definitions( -D__APP__VERSION__="${__APP__VERSION__}")
-project(DE_TRACKER VERSION ${__APP__VERSION__})
+project(DE_TRACKER VERSION "${__APP__VERSION__}")
 
 
 
@@ -126,3 +176,23 @@ if (DDEBUG)
 endif()
 
 message ("${Yellow}=========================================================================${ColourReset}")
+message (STATUS "Version              : ${__APP__VERSION__}")
+
+# ──────────────────────────────────────────────────────────────
+# Build success script and version management
+# ──────────────────────────────────────────────────────────────
+set(BUILD_SUCCESS_SCRIPT "${CMAKE_BINARY_DIR}/build_success.cmake")
+file(WRITE "${BUILD_SUCCESS_SCRIPT}" "")
+file(APPEND "${BUILD_SUCCESS_SCRIPT}" "execute_process(COMMAND \"${CMAKE_COMMAND}\" -E echo \"\")\n")
+file(APPEND "${BUILD_SUCCESS_SCRIPT}" "execute_process(COMMAND \"${CMAKE_COMMAND}\" -E cmake_echo_color --green --bold \"=========================================================================\")\n")
+file(APPEND "${BUILD_SUCCESS_SCRIPT}" "execute_process(COMMAND \"${CMAKE_COMMAND}\" -E cmake_echo_color --green --bold \"BUILD COMPLETED SUCCESSFULLY\")\n")
+file(APPEND "${BUILD_SUCCESS_SCRIPT}" "execute_process(COMMAND \"${CMAKE_COMMAND}\" -E cmake_echo_color --cyan --bold \"Version: ${__APP__VERSION__}\")\n")
+file(APPEND "${BUILD_SUCCESS_SCRIPT}" "execute_process(COMMAND \"${CMAKE_COMMAND}\" -E cmake_echo_color --cyan --bold \"Build Number: ${BUILD_VERSION}\")\n")
+file(APPEND "${BUILD_SUCCESS_SCRIPT}" "execute_process(COMMAND \"${CMAKE_COMMAND}\" -E cmake_echo_color --green --bold \"=========================================================================\")\n")
+file(APPEND "${BUILD_SUCCESS_SCRIPT}" "execute_process(COMMAND \"${CMAKE_COMMAND}\" -E echo \"\")\n")
+
+# Write version file directly for RELEASE builds
+IF(CMAKE_BUILD_TYPE MATCHES RELEASE)
+    file(WRITE "${VERSION_FILE}" "${__APP__VERSION__}")
+    message(STATUS "Version written to ${VERSION_FILE}: ${__APP__VERSION__}")
+ENDIF()
