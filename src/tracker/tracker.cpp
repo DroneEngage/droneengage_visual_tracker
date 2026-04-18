@@ -302,6 +302,7 @@ void CTracker::trackRect(const float x, const float y, const float w,
 void CTracker::trackRect(const float x, const float y, const float w,
                          const float h, bool is_ai_driven) {
   m_valid_track = false;
+  m_consecutive_read_failures = 0;  // Reset failure counter for new tracking session
   
   // Set AI-driven flag for this tracking session
   m_is_ai_driven_reinit = is_ai_driven;
@@ -325,6 +326,7 @@ void CTracker::trackRect(const float x, const float y, const float w,
 
 void CTracker::track(const float x, const float y, const float radius) {
   m_valid_track = false;
+  m_consecutive_read_failures = 0;  // Reset failure counter for new tracking session
 
   std::cout << _INFO_CONSOLE_BOLD_TEXT << "X:" << _LOG_CONSOLE_TEXT
             << std::to_string(x) << _INFO_CONSOLE_BOLD_TEXT
@@ -421,8 +423,22 @@ void CTracker::track2Rect(const float x, const float y, const float w,
     auto start_time = std::chrono::high_resolution_clock::now();
 
     if (!video_capture.read(frame) || frame.empty()) {
+      m_consecutive_read_failures++;
+      
+      if (m_consecutive_read_failures >= MAX_READ_FAILURES) {
+        std::cerr << _ERROR_CONSOLE_BOLD_TEXT_ << "FATAL:" << _INFO_CONSOLE_TEXT
+                  << " Too many consecutive video read failures (" 
+                  << m_consecutive_read_failures << "). Exiting application."
+                  << _NORMAL_CONSOLE_TEXT_ << std::endl;
+        if (m_callback_tracker)
+          m_callback_tracker->onTrackStatusChanged(
+              TrackingTarget_STATUS_TRACKING_STOPPED);
+        exit(EXIT_FAILURE);
+      }
+      
       std::cerr << _ERROR_CONSOLE_BOLD_TEXT_ << "WARNING:" << _INFO_CONSOLE_TEXT
-                << " Captured an empty frame. Stopping tracking."
+                << " Captured an empty frame. Stopping tracking. (Failure "
+                << m_consecutive_read_failures << "/" << MAX_READ_FAILURES << ")"
                 << _NORMAL_CONSOLE_TEXT_ << std::endl;
       if (m_callback_tracker)
         m_callback_tracker->onTrackStatusChanged(
@@ -432,6 +448,9 @@ void CTracker::track2Rect(const float x, const float y, const float w,
 
       continue;
     }
+
+    // Reset failure counter on successful read
+    m_consecutive_read_failures = 0;
 
     // --- Tracking Logic ---
     if (m_is_tracking_active_initial) // Use the initial tracking state
