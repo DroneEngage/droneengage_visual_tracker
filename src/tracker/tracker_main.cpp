@@ -174,7 +174,8 @@ bool CTrackerMain::readConfigParameters() {
         m_source_video_device = "/dev/video" + std::to_string(video_index);
 
         std::cout << _LOG_CONSOLE_BOLD_TEXT << "Using source_video_device_name:"
-                  << _INFO_CONSOLE_BOLD_TEXT << m_source_video_device
+                  << _INFO_CONSOLE_BOLD_TEXT << camera["source_video_device_name"].get<std::string>()
+                  << " -> " << m_source_video_device
                   << _NORMAL_CONSOLE_TEXT_ << std::endl;
       }
     }
@@ -208,7 +209,8 @@ bool CTrackerMain::readConfigParameters() {
 
         std::cout << _SUCCESS_CONSOLE_BOLD_TEXT_
                   << "Using output_video_device_name:"
-                  << _INFO_CONSOLE_BOLD_TEXT << m_output_video_device
+                  << _INFO_CONSOLE_BOLD_TEXT << camera["output_video_device_name"].get<std::string>()
+                  << " -> " << m_output_video_device
                   << _NORMAL_CONSOLE_TEXT_ << std::endl;
       }
     }

@@ -17,6 +17,7 @@
 #include <opencv2/tracking/tracking_legacy.hpp>
 #include <thread>
 #include <cstdint>
+#include <cstdlib>
 
 #include <opencv2/core/ocl.hpp>
 
@@ -31,6 +32,7 @@
 // process itself is to increase the probability of locking on the object.
 constexpr uint16_t FRAMES_TO_SKIP_BETWEEN_MESSAGES = 15;
 constexpr uint16_t FRAMES_TO_SKIP_BETWEEN_TRACK_PROCESS = 5;
+constexpr int MAX_READ_FAILURES = 50; // ~10 seconds at 200ms sleep
 
 typedef struct buffer {
   void *start;
@@ -155,6 +157,8 @@ private:
   uint16_t m_frames_to_skip_between_messages = FRAMES_TO_SKIP_BETWEEN_MESSAGES;
   uint16_t m_frame_to_skip_between_track_process =
       FRAMES_TO_SKIP_BETWEEN_TRACK_PROCESS;
+  
+  int m_consecutive_read_failures = 0;
 };
 
 } // namespace tracker
