@@ -21,9 +21,9 @@
     */
     "camera": {
         // Specific Module Parameters
-        "source_video_device"               : "/dev/video57", //57",
+        //"source_video_device"               : "/dev/video0", // "/dev/video57", //57",
         //"output_video_device": "/dev/video3"
-        //"source_video_device_name"          : "DE-CAM1", //"SIM-CAM1", //"C270 HD WEBCAM",  // DE-RPI,DE-THERMAL,
+        "source_video_device_name"          : "SIM-CAM1", //"SIM-CAM1", //"C270 HD WEBCAM",  // DE-RPI,DE-THERMAL,
         "output_video_device_name"          : "DE-TRK"
         //"desired_input_width"               : 1280,
         //"desired_input_height"              : 720
@@ -45,7 +45,7 @@
         "ai_detection_timeout_ms": 2000,        // Maximum age of detections in buffer
         "ai_assisted_recovery_enabled": true,   // Enable AI-assisted recovery
         "ai_priority": true,                    // Prioritize AI detections over current tracking
-        "ai_priority_distance_threshold": 0.2,  // Distance threshold for "out of square" (20% of image diagonal)
+        "ai_priority_distance_threshold": 0.3,  // Distance threshold for "out of square" (20% of image diagonal)
         "tracker_lost_timeout_ms": 10000        // Timeout for manual intervention (when AI disabled)
     }
 }
