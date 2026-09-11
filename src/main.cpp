@@ -14,6 +14,7 @@
 #include "./de_common/de_databus/localConfigFile.hpp"
 #include "./de_common/de_databus/udpClient.hpp"
 #include "./de_common/de_databus/de_module.hpp"
+#include "./de_common/de_databus/de_facade_base.hpp"
 #include "tracker/tracker_main.hpp"
 #include "tracker/tracker_andruav_message_parser.hpp"
 
@@ -276,6 +277,10 @@ void init (int argc, char *argv[])
 
     // should be last
     initDEModule (argc,argv);
+
+    // de_tracker runs OpenCV frames + an ONNX model; raise the ceiling above
+    // the generic 500MB default so normal operation does not trip CRITICAL.
+    de::comm::CFacade_Base::getInstance().configureMemoryStatus(600, 20);
 }
 
 
