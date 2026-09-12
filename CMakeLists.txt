@@ -36,7 +36,7 @@ set(VERSION_FILE "${CMAKE_SOURCE_DIR}/.version")
 # Manually set major, minor, and bugfix versions (you can change these)
 set(MAJOR_VERSION 1)
 set(MINOR_VERSION 8)
-set(BUGFIX_VERSION 5)
+set(BUGFIX_VERSION 6)
 
 if(EXISTS ${VERSION_FILE})
     file(READ ${VERSION_FILE} CURRENT_VERSION)
