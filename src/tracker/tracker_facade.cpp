@@ -68,22 +68,42 @@ void CTracker_Facade::sendTrackingConfig(
 /**
  * Sends the tracking rectangle to de_camera to be drawn by its internal
  * overlay library. Coordinates are normalized [0..1] with (0,0) top-left.
+ * Sends a full SET_SHAPE (with style) on the first rect and every
+ * OVERLAY_FULL_RESEND_INTERVAL updates so de_camera recovers the shape after
+ * a restart or a CLEAR; in between, slim MOVE_SHAPE updates carry only the
+ * geometry. MOVE_SHAPE to an unknown id is ignored by de_camera.
  */
 void CTracker_Facade::sendCameraOverlayRect(
     const std::string &target_party_id, const float &x, const float &y,
     const float &w, const float &h) const {
-  Json_de shape = {
-      {"id", TRACKER_OVERLAY_SHAPE_ID},
-      {"type", "rect"},
-      {"x1", x},
-      {"y1", y},
-      {"x2", x + w},
-      {"y2", y + h},
-      {"thickness", 2},
-      {"filled", false},
-      {"color", {200, 0, 0, 255}}};
+  static constexpr uint32_t OVERLAY_FULL_RESEND_INTERVAL = 150;
 
-  Json_de message = {{"a", CAMERA_OVERLAY_ACTION_SET_SHAPE}, {"s", shape}};
+  const bool send_full =
+      (m_overlay_send_count % OVERLAY_FULL_RESEND_INTERVAL) == 0;
+  ++m_overlay_send_count;
+
+  Json_de message;
+  if (send_full) {
+    Json_de shape = {
+        {"id", TRACKER_OVERLAY_SHAPE_ID},
+        {"type", "rect"},
+        {"x1", x},
+        {"y1", y},
+        {"x2", x + w},
+        {"y2", y + h},
+        {"thickness", 2},
+        {"filled", false},
+        {"color", {200, 0, 0, 255}}};
+
+    message = {{"a", CAMERA_OVERLAY_ACTION_SET_SHAPE}, {"s", shape}};
+  } else {
+    message = {{"a", CAMERA_OVERLAY_ACTION_MOVE_SHAPE},
+               {"i", TRACKER_OVERLAY_SHAPE_ID},
+               {"x1", x},
+               {"y1", y},
+               {"x2", x + w},
+               {"y2", y + h}};
+  }
 
   m_module.sendJMSG(target_party_id, message,
                     TYPE_AndruavMessage_CAMERA_OVERLAY_ACTION, true);
@@ -99,6 +119,8 @@ void CTracker_Facade::sendCameraOverlayRect(
 
 void CTracker_Facade::sendCameraOverlayRemove(
     const std::string &target_party_id) const {
+  m_overlay_send_count = 0;
+
   Json_de message = {{"a", CAMERA_OVERLAY_ACTION_REMOVE_SHAPE},
                      {"i", TRACKER_OVERLAY_SHAPE_ID}};
 

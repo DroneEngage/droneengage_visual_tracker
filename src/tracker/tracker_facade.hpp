@@ -54,7 +54,8 @@ namespace tracker
             void sendCameraOverlayRemove(const std::string& target_party_id) const;
         protected:
 
-            
+            mutable uint32_t m_overlay_send_count = 0;
+
     };
 }
 }
