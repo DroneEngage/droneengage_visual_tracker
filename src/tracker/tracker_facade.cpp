@@ -88,7 +88,7 @@ void CTracker_Facade::sendCameraOverlayRect(
   m_module.sendJMSG(target_party_id, message,
                     TYPE_AndruavMessage_CAMERA_OVERLAY_ACTION, true);
 
-#ifdef DEBUG
+#ifdef DEBUG_OVERLAY_MSG
   static int overlay_send_counter = 0;
   if ((overlay_send_counter++ % 30) == 0) {
     std::cout << "overlay send rect:" << x << "," << y << " " << w << "x" << h
@@ -105,7 +105,7 @@ void CTracker_Facade::sendCameraOverlayRemove(
   m_module.sendJMSG(target_party_id, message,
                     TYPE_AndruavMessage_CAMERA_OVERLAY_ACTION, true);
 
-#ifdef DEBUG
+#ifdef DEBUG_OVERLAY_MSG
   std::cout << "overlay send REMOVE id:" << TRACKER_OVERLAY_SHAPE_ID
             << std::endl;
 #endif
