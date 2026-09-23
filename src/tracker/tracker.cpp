@@ -105,7 +105,7 @@ bool CTracker::init(const enum ENUM_TRACKER_TYPE tracker_type,
                     uint16_t frames_to_skip_between_messages,
                     uint16_t frame_to_skip_between_track_process,
                     int desired_input_width, int desired_input_height,
-                    bool crosshair) {
+                    bool crosshair, bool de_camera_draw) {
 
   // Enable OpenCV OpenCL acceleration if available for operations like cvtColor
   cv::ocl::setUseOpenCL(true);
@@ -122,6 +122,7 @@ bool CTracker::init(const enum ENUM_TRACKER_TYPE tracker_type,
   m_frames_to_skip_between_messages = frames_to_skip_between_messages;
   m_frame_to_skip_between_track_process = frame_to_skip_between_track_process;
   m_crosshair = crosshair;
+  m_de_camera_draw = de_camera_draw;
 
   m_process = false;
   m_active_tracker = tracker_type;
@@ -271,8 +272,23 @@ bool CTracker::uninit() {
   return true;
 }
 
+void CTracker::setCameraDraw(const bool de_camera_draw) {
+  if (!de_camera_draw) {
+    clearCameraOverlayShape();
+  }
+  m_de_camera_draw = de_camera_draw;
+}
+
+void CTracker::clearCameraOverlayShape() {
+  if (m_overlay_shape_drawn && m_callback_tracker != nullptr) {
+    m_callback_tracker->onCameraOverlayRemove();
+    m_overlay_shape_drawn = false;
+  }
+}
+
 void CTracker::pause() {
   m_is_tracking_active_initial = false;
+  clearCameraOverlayShape();
 
   if (m_callback_tracker != nullptr) {
     m_callback_tracker->onTrackStatusChanged(
@@ -292,6 +308,8 @@ void CTracker::stop() {
 
   if (m_framesThread.joinable())
     m_framesThread.join();
+
+  clearCameraOverlayShape();
 }
 
 void CTracker::trackRect(const float x, const float y, const float w,
@@ -478,7 +496,23 @@ void CTracker::track2Rect(const float x, const float y, const float w,
 
       if (track_success) {
         // Draw bounding box on every frame regardless of update skip
-        if (m_islegacy)
+        if (m_de_camera_draw) {
+          // bbox only changes when the tracker update runs, so the camera
+          // overlay rect is sent on the same cadence instead of drawing
+          // locally on the frame.
+          if (!should_skip_track_process && m_callback_tracker) {
+            if (m_islegacy) {
+              m_callback_tracker->onCameraOverlayRect(
+                  revScaleX(bbox_2d.x), revScaleY(bbox_2d.y),
+                  revScaleX(bbox_2d.width), revScaleY(bbox_2d.height));
+            } else {
+              m_callback_tracker->onCameraOverlayRect(
+                  revScaleX(bbox.x), revScaleY(bbox.y), revScaleX(bbox.width),
+                  revScaleY(bbox.height));
+            }
+            m_overlay_shape_drawn = true;
+          }
+        } else if (m_islegacy)
           cv::rectangle(frame, bbox_2d, cv::Scalar(0, 0, 200), 2, 1);
         else
           cv::rectangle(frame, bbox, cv::Scalar(0, 0, 200), 2, 1);
@@ -499,6 +533,8 @@ void CTracker::track2Rect(const float x, const float y, const float w,
           }
         }
       } else {
+        if (m_de_camera_draw)
+          clearCameraOverlayShape();
         cv::putText(frame, "Tracking failure detected", cv::Point(100, 80),
                     cv::FONT_HERSHEY_SIMPLEX, 0.75, cv::Scalar(0, 0, 255), 2);
         m_valid_track = false;

@@ -101,6 +101,14 @@
                         "defaultvalue": true,
                         "optional": true,
                         "desc": "Display crosshair overlay during tracking"
+                    },
+                    "de_camera_draw": {
+                        "fieldName": "de_camera_draw",
+                        "order":6,
+                        "type": "boolean",
+                        "defaultvalue": false,
+                        "optional": true,
+                        "desc": "Send tracking rectangle to de_camera overlay instead of drawing locally"
                     }
                 }
             }

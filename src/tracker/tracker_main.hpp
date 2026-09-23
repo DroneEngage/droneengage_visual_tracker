@@ -126,6 +126,8 @@ namespace tracker
             //CCallBack_Tracker
             void onTrack (const float& x, const float& y, const float& width, const float& height, const bool should_skip_message) override ;
             void onTrackStatusChanged (const int& track) override ;
+            void onCameraOverlayRect (const float& x, const float& y, const float& width, const float& height) override ;
+            void onCameraOverlayRemove () override ;
 
             inline uint8_t getTrackingCameraDirection() const
             {
@@ -184,6 +186,7 @@ namespace tracker
             uint8_t m_tracking_camera_direction = TRACKING_CAMERA_DIRECTION_NONE;
             de::tracker::ENUM_TRACKER_TYPE m_tracker_algorithm_index = de::tracker::ENUM_TRACKER_TYPE::TRACKER_CSRT;
             bool m_crosshair = true;
+            bool m_de_camera_draw = false;
 
             std::string m_source_video_device;
             std::string m_output_video_device;

@@ -57,6 +57,9 @@ class CCallBack_Tracker {
 public:
   virtual void onTrack (const float& x, const float& y, const float& width, const float& height, const bool should_skip_message) = 0;
   virtual void onTrackStatusChanged(const int &track) = 0;
+  virtual void onCameraOverlayRect(const float &x, const float &y,
+                                   const float &width, const float &height) = 0;
+  virtual void onCameraOverlayRemove() = 0;
 };
 
 class CTracker {
@@ -80,7 +83,7 @@ public:
             uint16_t frames_to_skip_between_messages,
             uint16_t frame_to_skip_between_track_process,
             int desired_input_width = 0, int desired_input_height = 0,
-            bool crosshair = true);
+            bool crosshair = true, bool de_camera_draw = false);
 
   bool uninit();
   void track(const float x, const float y, const float radius);
@@ -89,6 +92,7 @@ public:
   void track2Rect(const float x, const float y, const float w, const float h);
   void pause();
   void stop();
+  void setCameraDraw(const bool de_camera_draw);
   const std::string getActiveTracker() {
     return trackerTypes[(int)m_active_tracker];
   };
@@ -102,6 +106,7 @@ protected:
                           unsigned int &width, unsigned int &height);
   bool initTargetVirtualVideoDevice(const std::string &output_video_device);
   void destroyVirtualVideoDevice();
+  void clearCameraOverlayShape();
 
 protected:
   /**
@@ -144,6 +149,8 @@ private:
   uint8_t m_tracking_camera_direction = 0;
   uint16_t m_camera_orientation = DEF_TRACK_ORIENTATION_DEG_0;
   bool m_crosshair = true;
+  bool m_de_camera_draw = false;
+  bool m_overlay_shape_drawn = false;
 
   uint32_t m_target_fps = 30;
 

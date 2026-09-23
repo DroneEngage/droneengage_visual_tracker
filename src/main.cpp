@@ -287,6 +287,7 @@ void init (int argc, char *argv[])
 void uninit ()
 {
     cTrackerMain.uninit();
+	cModule.uninit();
 	m_exit = true;
 
     // end program here

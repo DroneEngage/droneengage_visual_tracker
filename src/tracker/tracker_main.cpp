@@ -49,7 +49,8 @@ bool CTrackerMain::init() {
       m_tracker_algorithm_index, m_source_video_device,
       m_output_video_device,
       m_frames_to_skip_between_messages, m_frame_to_skip_between_track_process,
-      m_desired_input_width, m_desired_input_height, m_crosshair);
+      m_desired_input_width, m_desired_input_height, m_crosshair,
+      m_de_camera_draw);
   if (ok == false) {
     std::cout << _ERROR_CONSOLE_BOLD_TEXT_
               << "FATAL ERROR:" << _INFO_CONSOLE_TEXT
@@ -120,6 +121,22 @@ void CTrackerMain::reloadParametersIfConfigChanged() {
                   << "Using crosshair:" << _INFO_CONSOLE_BOLD_TEXT
                   << m_crosshair << _NORMAL_CONSOLE_TEXT_
                   << std::endl;
+  }
+
+  m_de_camera_draw = false;
+  if (tracking.contains("de_camera_draw")) {
+    m_de_camera_draw = tracking["de_camera_draw"].get<bool>();
+
+    std::cout << _LOG_CONSOLE_BOLD_TEXT
+                  << "Using de_camera_draw:" << _INFO_CONSOLE_BOLD_TEXT
+                  << m_de_camera_draw << _NORMAL_CONSOLE_TEXT_
+                  << std::endl;
+  }
+
+  // m_tracker is null during the first read inside init(); the value is
+  // passed to CTracker::init there. On later config reloads propagate it.
+  if (m_tracker) {
+    m_tracker->setCameraDraw(m_de_camera_draw);
   }
 
   
@@ -372,9 +389,13 @@ bool CTrackerMain::uninit() {
 
   m_exit_thread = true;
 
-  m_scheduler_thread.join();
+  if (m_scheduler_thread.joinable()) {
+    m_scheduler_thread.join();
+  }
 
-  m_tracker.get()->uninit();
+  if (m_tracker) {
+    m_tracker.get()->uninit();
+  }
 
   return true;
 }
@@ -553,6 +574,24 @@ void CTrackerMain::onTrack(const float &x, const float &y, const float &width,
   if (!should_skip_message) {
     m_tracker_facade.sendTrackingTargetsLocation(std::string(""), targets);
   }
+}
+
+/**
+ * Called by CTracker when de_camera_draw is enabled and the tracked object
+ * rectangle is updated. Coordinates are normalized [0..1], (0,0) top-left.
+ */
+void CTrackerMain::onCameraOverlayRect(const float &x, const float &y,
+                                       const float &width,
+                                       const float &height) {
+  m_tracker_facade.sendCameraOverlayRect(std::string(""), x, y, width, height);
+}
+
+/**
+ * Called by CTracker when the tracking rectangle should be removed from the
+ * de_camera overlay (track lost, paused, stopped, or draw mode disabled).
+ */
+void CTrackerMain::onCameraOverlayRemove() {
+  m_tracker_facade.sendCameraOverlayRemove(std::string(""));
 }
 
 /**
