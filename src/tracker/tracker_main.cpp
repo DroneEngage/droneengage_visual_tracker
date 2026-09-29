@@ -10,6 +10,7 @@
 #include "tracker.hpp"
 #include "tracker_main.hpp"
 #include "video.hpp"
+#include "../version.hpp"
 
 using namespace de::tracker;
 
@@ -418,6 +419,7 @@ void CTrackerMain::enableTracking() {
 
   // ACK
   m_tracker_facade.sendTrackingTargetStatus(std::string(""), m_tracker_status);
+  publishCapabilityState();
 }
 
 void CTrackerMain::pauseTracking() { m_tracker.get()->pause(); }
@@ -431,6 +433,7 @@ void CTrackerMain::stopTracking() {
   m_ai_detection_buffer.clear();
 
   m_tracker_facade.sendTrackingTargetStatus(std::string(""), m_tracker_status);
+  publishCapabilityState();
 }
 
 /**
@@ -562,6 +565,7 @@ void CTrackerMain::onTrackStatusChanged(const int &status) {
   m_tracker_status = status;
 
   m_tracker_facade.sendTrackingTargetStatus(std::string(""), status);
+  publishCapabilityState();
 
   // Handle tracker status changes with improved recovery logic
   if (status == TrackingTarget_STATUS_TRACKING_LOST) {
@@ -844,4 +848,129 @@ bool CTrackerMain::isTrackingRectOutOfAISquare(const float ai_x, const float ai_
 #endif
   
   return distance > threshold_distance;
+}
+
+// ============================================================================
+// Phase 3: Capability registry (de.cap/1) - "visual_tracker" namespace
+// ============================================================================
+
+const char *CTrackerMain::trackingStateName(const int status) {
+  switch (status) {
+  case TrackingTarget_STATUS_TRACKING_LOST:
+    return "lost";
+  case TrackingTarget_STATUS_TRACKING_DETECTED:
+    return "detected";
+  case TrackingTarget_STATUS_TRACKING_ENABLED:
+    return "enabled";
+  case TrackingTarget_STATUS_TRACKING_STOPPED:
+    return "stopped";
+  default:
+    return "config";
+  }
+}
+
+const char *CTrackerMain::aiStateName(const int status) {
+  switch (status) {
+  case TrackingTarget_STATUS_AI_Recognition_DISABLED:
+    return "disabled";
+  case TrackingTarget_STATUS_AI_Recognition_ENABLED:
+    return "enabled";
+  case TrackingTarget_STATUS_AI_Recognition_LOST:
+    return "lost";
+  case TrackingTarget_STATUS_AI_Recognition_DETECTED:
+    return "detected";
+  default:
+    return "disabled";
+  }
+}
+
+void CTrackerMain::publishCapabilityState() {
+  m_tracker_facade.publishState(
+      "visual_tracker",
+      Json_de::object(
+          {{"tracking", trackingStateName(m_tracker_status)},
+           {"ai", aiStateName(m_ai_tracker_status)}}));
+}
+
+void CTrackerMain::setupCapabilities() {
+  const Json_de advert = Json_de::object(
+      {{"schema", "de.cap/1"},
+       {"ns", "visual_tracker"},
+       {"module", "droneengage_visual_tracker"},
+       {"ver", version_string},
+       {"actions",
+        Json_de::object(
+            {{"track",
+              Json_de::object(
+                  {{"desc", "track a region of the video frame"},
+                   {"params",
+                    Json_de::object(
+                        {{"target",
+                          Json_de::object(
+                              {{"type", "object"},
+                               {"required", true},
+                               {"desc", "normalized box, x,y top-left in 0..1"},
+                               {"fields",
+                                Json_de::object(
+                                    {{"x", Json_de::object({{"type", "number"}, {"required", true}, {"min", 0.0}, {"max", 1.0}})},
+                                     {"y", Json_de::object({{"type", "number"}, {"required", true}, {"min", 0.0}, {"max", 1.0}})},
+                                     {"w", Json_de::object({{"type", "number"}, {"required", true}, {"min", 0.01}, {"max", 1.0}})},
+                                     {"h", Json_de::object({{"type", "number"}, {"required", true}, {"min", 0.01}, {"max", 1.0}})}})}})}})}})}})},
+       {"state",
+        Json_de::object(
+            {{"tracking",
+              Json_de::object(
+                  {{"type", "enum"},
+                   {"values", {"lost", "detected", "enabled", "stopped",
+                               "config"}}})},
+             {"ai",
+              Json_de::object(
+                  {{"type", "enum"},
+                   {"values", {"lost", "detected", "enabled", "disabled"}}})}})}});
+
+  if (!m_tracker_facade.setCapabilities({advert.dump()})) {
+    std::cout << _ERROR_CONSOLE_BOLD_TEXT_
+              << "capability advert rejected for ns visual_tracker"
+              << _NORMAL_CONSOLE_TEXT_ << std::endl;
+    return;
+  }
+
+  m_tracker_facade.onInvoke([this](const std::string &id, const std::string &ns,
+                                   const std::string &act, const Json_de &params,
+                                   std::string &err) -> Json_de {
+    return onCapabilityInvoke(id, ns, act, params, err);
+  });
+}
+
+/**
+ * CAPABILITY_INVOKE handler (worker thread). Params arrive already validated
+ * against the advert. "track {target:{x,y,w,h}}" maps to
+ * TrackingTarget_ACTION_TRACKING_REGION.
+ */
+Json_de CTrackerMain::onCapabilityInvoke(const std::string &id,
+                                         const std::string &ns,
+                                         const std::string &act,
+                                         const Json_de &params,
+                                         std::string &err) {
+  (void)id;
+  (void)ns;
+
+  if (act != "track") {
+    err = "unknown action visual_tracker." + act;
+    return Json_de::object();
+  }
+
+  const Json_de &target = params["target"];
+  const float x = target["x"].get<float>();
+  const float y = target["y"].get<float>();
+  const float w = target["w"].get<float>();
+  const float h = target["h"].get<float>();
+
+  // startTrackingRect() is a no-op while the tracker is stopped
+  if (m_tracker_status == TrackingTarget_STATUS_TRACKING_STOPPED)
+    enableTracking();
+
+  startTrackingRect(x, y, w, h, getAiPriority());
+
+  return Json_de::object({{"tracking", trackingStateName(m_tracker_status)}});
 }

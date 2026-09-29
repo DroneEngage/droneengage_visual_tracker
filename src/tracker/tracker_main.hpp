@@ -79,6 +79,13 @@ namespace tracker
             void loopScheduler();
 
         public:
+
+            void setupCapabilities();
+            Json_de onCapabilityInvoke (const std::string& id, const std::string& ns,
+                                        const std::string& act, const Json_de& params,
+                                        std::string& err);
+
+        public:
             
             void enableTracking();
             void startTrackingRect(const float x, const float y, const float w, const float h, bool is_ai_driven = false);
@@ -102,6 +109,7 @@ namespace tracker
             {
                 m_ai_tracker_status = status;
                 m_tracker_facade.sendTrackingTargetStatus(std::string(""), m_tracker_status);
+                publishCapabilityState();
             }
 
             inline int getAITrackerStatus()
@@ -144,6 +152,9 @@ namespace tracker
         private:
             bool readConfigParameters();
             void reloadParametersIfConfigChanged();
+            void publishCapabilityState();
+            static const char *trackingStateName(const int status);
+            static const char *aiStateName(const int status);
 
         private:
         

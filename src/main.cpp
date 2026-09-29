@@ -218,6 +218,8 @@ void initDEModule(int argc, char *argv[])
     cModule.setHardware(hardware_serial, ENUM_HARDWARE_TYPE::HARDWARE_TYPE_CPU);
     cModule.setMessageOnReceive (&onReceive);
 
+    de::tracker::CTrackerMain::getInstance().setupCapabilities();
+
     int udp_chunk_size = DEFAULT_UDP_DATABUS_PACKET_SIZE;
     
     if (validateField(jsonConfig, "s2s_udp_packet_size",Json_de::value_t::string)) 
