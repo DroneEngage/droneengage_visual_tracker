@@ -1,6 +1,7 @@
 #ifndef TRACKER_MAIN_H
 #define TRACKER_MAIN_H
 #include <thread>
+#include <mutex>
 #include "../de_common/de_databus/de_module.hpp"
 #include "../de_common/de_databus/de_common_callback.hpp"
 #include <string>
@@ -112,6 +113,8 @@ namespace tracker
                 publishCapabilityState();
             }
 
+            void setAIClassList(const std::vector<std::string>& class_names);
+
             inline int getAITrackerStatus()
             {
                 return m_ai_tracker_status;
@@ -155,6 +158,7 @@ namespace tracker
             void publishCapabilityState();
             static const char *trackingStateName(const int status);
             static const char *aiStateName(const int status);
+            void requestAIClassList();
 
         private:
         
@@ -164,6 +168,12 @@ namespace tracker
             
             int m_tracker_status = TrackingTarget_STATUS_TRACKING_STOPPED;
             int m_ai_tracker_status = TrackingTarget_STATUS_AI_Recognition_DISABLED;
+
+            // class list learned from AI_Recognition_STATUS a=CLASS_LIST
+            // (1077); feeds the visual_tracker.start {class} enum
+            std::mutex m_ai_class_lock;
+            std::vector<std::string> m_ai_class_names;
+            bool m_caps_advertised = false;
             
             // AI Detection Buffer for temporal smoothing
             std::vector<AIDetection> m_ai_detection_buffer;

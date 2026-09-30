@@ -50,6 +50,7 @@ namespace tracker
             void sendTrackingTargetsLocation(const std::string& target_party_id, const Json_de targets_location) const;
             void sendTrackingTargetStatus(const std::string& target_party_id, const int status) const;
             void sendTrackingConfig(const std::string& target_party_id) const;
+            void sendAIRecognitionAction(const Json_de& cmd) const;
         protected:
 
             

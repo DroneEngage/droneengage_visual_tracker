@@ -32,6 +32,15 @@ void CTrackerMain::loopScheduler() {
         std::cout << _ERROR_CONSOLE_BOLD_TEXT_ "Config file updated"
                   << _NORMAL_CONSOLE_TEXT_ << std::endl;
       }
+
+      // visual_tracker.start needs the AI class list; keep asking until the
+      // AI module answers (it may start after this module)
+      bool class_list_empty;
+      {
+        std::lock_guard<std::mutex> lock(m_ai_class_lock);
+        class_list_empty = m_ai_class_names.empty();
+      }
+      if (class_list_empty) requestAIClassList();
     }
   }
 }
@@ -892,7 +901,29 @@ void CTrackerMain::publishCapabilityState() {
            {"ai", aiStateName(m_ai_tracker_status)}}));
 }
 
+/**
+ * de_tracker owns the whole "visual_tracker" namespace (one owner per unit,
+ * README E4): "track" is served here, "start"/"stop" are forwarded to the
+ * AI module (droneengage_yolo_ai) as AI_Recognition_ACTION (1076). The
+ * advert is re-sent when the AI class list becomes known so "start {class}"
+ * turns into an enum; the new hash in the ID message makes the registry
+ * re-fetch it.
+ */
 void CTrackerMain::setupCapabilities() {
+  // start {class}: an enum of the AI class list when it is known, a plain
+  // string otherwise (resolved against the list at invoke time)
+  Json_de class_param = Json_de::object(
+      {{"type", "string"}, {"required", true}, {"desc", "class to search for"}});
+  {
+    std::lock_guard<std::mutex> lock(m_ai_class_lock);
+    if (!m_ai_class_names.empty()) {
+      class_param = Json_de::object({{"type", "enum"},
+                                     {"required", true},
+                                     {"values", m_ai_class_names},
+                                     {"desc", "class to search for"}});
+    }
+  }
+
   const Json_de advert = Json_de::object(
       {{"schema", "de.cap/1"},
        {"ns", "visual_tracker"},
@@ -900,7 +931,13 @@ void CTrackerMain::setupCapabilities() {
        {"ver", version_string},
        {"actions",
         Json_de::object(
-            {{"track",
+            {{"start",
+              Json_de::object(
+                  {{"desc", "enable AI recognition and search for a class"},
+                   {"params", Json_de::object({{"class", class_param}})}})},
+             {"stop",
+              Json_de::object({{"desc", "disable AI recognition"}})},
+             {"track",
               Json_de::object(
                   {{"desc", "track a region of the video frame"},
                    {"params",
@@ -935,17 +972,43 @@ void CTrackerMain::setupCapabilities() {
     return;
   }
 
-  m_tracker_facade.onInvoke([this](const std::string &id, const std::string &ns,
-                                   const std::string &act, const Json_de &params,
-                                   std::string &err) -> Json_de {
-    return onCapabilityInvoke(id, ns, act, params, err);
-  });
+  if (!m_caps_advertised) {
+    m_tracker_facade.onInvoke([this](const std::string &id, const std::string &ns,
+                                     const std::string &act, const Json_de &params,
+                                     std::string &err) -> Json_de {
+      return onCapabilityInvoke(id, ns, act, params, err);
+    });
+    m_caps_advertised = true;
+  }
+}
+
+/**
+ * Class names from AI_Recognition_STATUS a=CLASS_LIST (1077). Re-advertises
+ * only when the list actually changed.
+ */
+void CTrackerMain::setAIClassList(const std::vector<std::string> &class_names) {
+  {
+    std::lock_guard<std::mutex> lock(m_ai_class_lock);
+    if (class_names == m_ai_class_names) return;
+    m_ai_class_names = class_names;
+  }
+  setupCapabilities();
+}
+
+/**
+ * Ask the AI module for its class list (it answers with 1077 a=CLASS_LIST).
+ */
+void CTrackerMain::requestAIClassList() {
+  m_tracker_facade.sendAIRecognitionAction(
+      Json_de::object({{"a", TrackingTarget_ACTION_AI_Recognition_CLASS_LIST}}));
 }
 
 /**
  * CAPABILITY_INVOKE handler (worker thread). Params arrive already validated
- * against the advert. "track {target:{x,y,w,h}}" maps to
- * TrackingTarget_ACTION_TRACKING_REGION.
+ * against the advert.
+ * - start {class}: AI_Recognition_ACTION ENABLE + SEARCH i=[index] (1076).
+ * - stop {}: AI_Recognition_ACTION DISABLE (1076).
+ * - track {target:{x,y,w,h}}: TrackingTarget_ACTION_TRACKING_REGION.
  */
 Json_de CTrackerMain::onCapabilityInvoke(const std::string &id,
                                          const std::string &ns,
@@ -954,6 +1017,50 @@ Json_de CTrackerMain::onCapabilityInvoke(const std::string &id,
                                          std::string &err) {
   (void)id;
   (void)ns;
+
+  if (act == "start") {
+    const std::string cls = params.value("class", "");
+
+    // resolve the class name to its index in the AI module's list
+    int index = -1;
+    bool list_known = false;
+    {
+      std::lock_guard<std::mutex> lock(m_ai_class_lock);
+      list_known = !m_ai_class_names.empty();
+      for (size_t i = 0; i < m_ai_class_names.size(); ++i) {
+        if (m_ai_class_names[i] == cls) {
+          index = (int)i;
+          break;
+        }
+      }
+    }
+    if (!list_known) {
+      requestAIClassList();
+      err = "AI class list not known yet (is droneengage_yolo_ai running?)";
+      return Json_de::object();
+    }
+    if (index < 0) {
+      err = "unknown class '" + cls + "'";
+      return Json_de::object();
+    }
+
+    // same sequence the GCS sends: ENABLE then SEARCH
+    m_tracker_facade.sendAIRecognitionAction(
+        Json_de::object({{"a", TrackingTarget_ACTION_AI_Recognition_ENABLE}}));
+    m_tracker_facade.sendAIRecognitionAction(Json_de::object(
+        {{"a", TrackingTarget_ACTION_AI_Recognition_SEARCH},
+         {"i", Json_de::array({index})}}));
+    // the AI module re-broadcasts its class list so de_mavlink's detect
+    // projector can map the selected index to a name
+    requestAIClassList();
+    return Json_de::object({{"started", true}, {"class", cls}, {"index", index}});
+  }
+
+  if (act == "stop") {
+    m_tracker_facade.sendAIRecognitionAction(
+        Json_de::object({{"a", TrackingTarget_ACTION_AI_Recognition_DISABLE}}));
+    return Json_de::object({{"stopped", true}});
+  }
 
   if (act != "track") {
     err = "unknown action visual_tracker." + act;
