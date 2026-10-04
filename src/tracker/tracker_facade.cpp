@@ -245,3 +245,12 @@ void CTracker_Facade::sendCameraOverlayRemove(
             << std::endl;
 #endif
 }
+
+/**
+ * AI_Recognition_ACTION (1076) to the AI module (droneengage_yolo_ai) over
+ * the intermodule path - used by the visual_tracker start/stop actions.
+ */
+void CTracker_Facade::sendAIRecognitionAction(const Json_de &cmd) const {
+  m_module.sendJMSG(std::string(""), cmd,
+                    TYPE_AndruavMessage_AI_Recognition_ACTION, true);
+}

@@ -1,6 +1,7 @@
 #ifndef TRACKER_MAIN_H
 #define TRACKER_MAIN_H
 #include <thread>
+#include <mutex>
 #include "../de_common/de_databus/de_module.hpp"
 #include "../de_common/de_databus/de_common_callback.hpp"
 #include <string>
@@ -79,6 +80,13 @@ namespace tracker
             void loopScheduler();
 
         public:
+
+            void setupCapabilities();
+            Json_de onCapabilityInvoke (const std::string& id, const std::string& ns,
+                                        const std::string& act, const Json_de& params,
+                                        std::string& err);
+
+        public:
             
             void enableTracking();
             void startTrackingRect(const float x, const float y, const float w, const float h, bool is_ai_driven = false);
@@ -102,7 +110,10 @@ namespace tracker
             {
                 m_ai_tracker_status = status;
                 m_tracker_facade.sendTrackingTargetStatus(std::string(""), m_tracker_status);
+                publishCapabilityState();
             }
+
+            void setAIClassList(const std::vector<std::string>& class_names);
 
             inline int getAITrackerStatus()
             {
@@ -150,6 +161,10 @@ namespace tracker
         private:
             bool readConfigParameters();
             void reloadParametersIfConfigChanged();
+            void publishCapabilityState();
+            static const char *trackingStateName(const int status);
+            static const char *aiStateName(const int status);
+            void requestAIClassList();
 
         private:
         
@@ -159,6 +174,12 @@ namespace tracker
             
             int m_tracker_status = TrackingTarget_STATUS_TRACKING_STOPPED;
             int m_ai_tracker_status = TrackingTarget_STATUS_AI_Recognition_DISABLED;
+
+            // class list learned from AI_Recognition_STATUS a=CLASS_LIST
+            // (1077); feeds the visual_tracker.start {class} enum
+            std::mutex m_ai_class_lock;
+            std::vector<std::string> m_ai_class_names;
+            bool m_caps_advertised = false;
             
             // AI Detection Buffer for temporal smoothing
             std::vector<AIDetection> m_ai_detection_buffer;

@@ -114,6 +114,21 @@ void CTrackerAndruavMessageParser::parseCommand(Json_de &andruav_message, const 
             return;
         const int status = cmd["a"].get<int>();
 
+        // a=CLASS_LIST carries the AI class names in "c", not a status
+        if (status == TrackingTarget_STATUS_AI_Recognition_CLASS_LIST)
+        {
+            if (cmd.contains("c") && cmd["c"].is_array())
+            {
+                std::vector<std::string> names;
+                for (const auto& c : cmd["c"])
+                {
+                    if (c.is_string()) names.push_back(c.get<std::string>());
+                }
+                m_tracker_main.setAIClassList(names);
+            }
+            return;
+        }
+
         m_tracker_main.setAITrackerStatus(status);
 
         switch (status)

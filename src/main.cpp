@@ -4,6 +4,7 @@
 
 #include "./de_common/helpers/colors.hpp"
 #include "./de_common/helpers/helpers.hpp"
+#include "./de_common/helpers/shutdown_signal.hpp"
 #include "./de_common/helpers/getopt_cpp.hpp"
 #include "./de_common/helpers/util_rpi.hpp"
 #include "version.hpp"
@@ -34,7 +35,6 @@ de::comm::CModule& cModule= de::comm::CModule::getInstance();
 
 std::time_t time_stamp;
 
-bool exit_me = false;
 
 // UAVOS Current PartyID read from communicator
 std::string  PartyID;
@@ -49,7 +49,6 @@ de::tracker::CTrackerAndruavMessageParser& cTrackerAndruavMessageParser = de::tr
 de::CConfigFile& cConfigFile = de::CConfigFile::getInstance();
 de::CLocalConfigFile& cLocalConfigFile = de::CLocalConfigFile::getInstance();
 
-void quit_handler( int sig );
 
 /**
  * @brief true when exit status.
@@ -219,6 +218,8 @@ void initDEModule(int argc, char *argv[])
     cModule.setHardware(hardware_serial, ENUM_HARDWARE_TYPE::HARDWARE_TYPE_CPU);
     cModule.setMessageOnReceive (&onReceive);
 
+    de::tracker::CTrackerMain::getInstance().setupCapabilities();
+
     int udp_chunk_size = DEFAULT_UDP_DATABUS_PACKET_SIZE;
     
     if (validateField(jsonConfig, "s2s_udp_packet_size",Json_de::value_t::string)) 
@@ -242,8 +243,7 @@ void initDEModule(int argc, char *argv[])
 
 void init (int argc, char *argv[]) 
 {
-	signal(SIGINT,quit_handler);
-    signal(SIGTERM,quit_handler);
+	de::shutdown::installHandlers();
     
     instance_time_stamp = std::time(nullptr);
 
@@ -294,24 +294,6 @@ void uninit ()
 	exit(0);
 }
 
-// ------------------------------------------------------------------------------
-//   Quit Signal Handler
-// ------------------------------------------------------------------------------
-// this function is called when you press Ctrl-C
-void quit_handler( int sig )
-{
-	std::cout << _INFO_CONSOLE_TEXT << std::endl << "TERMINATING AT USER REQUEST" <<  _NORMAL_CONSOLE_TEXT_ << std::endl;
-	
-	try 
-    {
-        exit_me = true;
-        uninit();
-	}
-	catch (int error)
-    {
-
-    }
-}
 
 int main (int argc, char *argv[]) 
 {
@@ -327,10 +309,9 @@ int main (int argc, char *argv[])
 
     init(argc, argv);
 
-    while (!exit_me)
-    {
-        std::this_thread::sleep_for(std::chrono::seconds(1));
-    }
+    de::shutdown::waitForRequest();
+
+    uninit();
 }
 
 

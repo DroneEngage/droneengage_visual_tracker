@@ -56,6 +56,7 @@ namespace tracker
             void sendCameraOverlayRemoveRect(const std::string& target_party_id) const;
             void sendCameraOverlayRemoveText(const std::string& target_party_id) const;
             void sendCameraOverlayRemove(const std::string& target_party_id) const;
+            void sendAIRecognitionAction(const Json_de& cmd) const;
         protected:
 
             mutable uint32_t m_overlay_send_count = 0;
