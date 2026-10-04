@@ -4,9 +4,12 @@
 
 using namespace de::tracker;
 
-// Shape id used for the tracking rectangle on de_camera overlay.
-// High value to avoid colliding with shapes set by other senders.
+// Shape ids used for the tracker overlay on de_camera.
+// 9001 tracking rect, 9002 crosshair, 9004 failure text.
+// High values to avoid colliding with shapes set by other senders.
 static constexpr uint32_t TRACKER_OVERLAY_SHAPE_ID = 9001;
+static constexpr uint32_t TRACKER_OVERLAY_CROSSHAIR_ID = 9002;
+static constexpr uint32_t TRACKER_OVERLAY_TEXT_ID = 9004;
 
 void CTracker_Facade::sendTrackingTargetsLocation(
     const std::string &target_party_id, const Json_de targets_location) const {
@@ -117,7 +120,80 @@ void CTracker_Facade::sendCameraOverlayRect(
 #endif
 }
 
-void CTracker_Facade::sendCameraOverlayRemove(
+/**
+ * Sends the center crosshair '+' to de_camera as a single "crosshair" shape:
+ * x1/y1 is the centre and radius is the '+' arm half-length as a fraction of
+ * frame height (same px length on both axes, matching the local drawing).
+ * The geometry is static so a SET_SHAPE is sent only on the first update and
+ * every OVERLAY_FULL_RESEND_INTERVAL calls so de_camera recovers the shape
+ * after a restart or a CLEAR.
+ */
+void CTracker_Facade::sendCameraOverlayCrosshair(
+    const std::string &target_party_id, const float &cx, const float &cy,
+    const float &arm) const {
+  static constexpr uint32_t OVERLAY_FULL_RESEND_INTERVAL = 150;
+
+  if ((m_overlay_crosshair_send_count % OVERLAY_FULL_RESEND_INTERVAL) != 0) {
+    ++m_overlay_crosshair_send_count;
+    return;
+  }
+  ++m_overlay_crosshair_send_count;
+
+  Json_de shape = {
+      {"id", TRACKER_OVERLAY_CROSSHAIR_ID},
+      {"type", "crosshair"},
+      {"x1", cx},
+      {"y1", cy},
+      {"radius", arm},
+      {"thickness", 2},
+      {"color", {0, 255, 0, 255}}};
+
+  Json_de message = {{"a", CAMERA_OVERLAY_ACTION_SET_SHAPE}, {"s", shape}};
+
+  m_module.sendJMSG(target_party_id, message,
+                    TYPE_AndruavMessage_CAMERA_OVERLAY_ACTION, true);
+
+#ifdef DEBUG_OVERLAY_MSG
+  std::cout << "overlay send crosshair:" << cx << "," << cy << std::endl;
+#endif
+}
+
+/**
+ * Sends a status text line to de_camera. MOVE_SHAPE cannot update text so a
+ * full SET_SHAPE is sent on the first update and every
+ * OVERLAY_FULL_RESEND_INTERVAL calls.
+ */
+void CTracker_Facade::sendCameraOverlayText(
+    const std::string &target_party_id, const float &x, const float &y,
+    const float &text_height, const std::string &text) const {
+  static constexpr uint32_t OVERLAY_FULL_RESEND_INTERVAL = 150;
+
+  if ((m_overlay_text_send_count % OVERLAY_FULL_RESEND_INTERVAL) != 0) {
+    ++m_overlay_text_send_count;
+    return;
+  }
+  ++m_overlay_text_send_count;
+
+  Json_de shape = {
+      {"id", TRACKER_OVERLAY_TEXT_ID},
+      {"type", "text"},
+      {"x1", x},
+      {"y1", y},
+      {"text_height", text_height},
+      {"text", text},
+      {"color", {200, 0, 0, 255}}};
+
+  Json_de message = {{"a", CAMERA_OVERLAY_ACTION_SET_SHAPE}, {"s", shape}};
+
+  m_module.sendJMSG(target_party_id, message,
+                    TYPE_AndruavMessage_CAMERA_OVERLAY_ACTION, true);
+
+#ifdef DEBUG_OVERLAY_MSG
+  std::cout << "overlay send text:'" << text << "'" << std::endl;
+#endif
+}
+
+void CTracker_Facade::sendCameraOverlayRemoveRect(
     const std::string &target_party_id) const {
   m_overlay_send_count = 0;
 
@@ -129,6 +205,43 @@ void CTracker_Facade::sendCameraOverlayRemove(
 
 #ifdef DEBUG_OVERLAY_MSG
   std::cout << "overlay send REMOVE id:" << TRACKER_OVERLAY_SHAPE_ID
+            << std::endl;
+#endif
+}
+
+void CTracker_Facade::sendCameraOverlayRemoveText(
+    const std::string &target_party_id) const {
+  m_overlay_text_send_count = 0;
+
+  Json_de message = {{"a", CAMERA_OVERLAY_ACTION_REMOVE_SHAPE},
+                     {"i", TRACKER_OVERLAY_TEXT_ID}};
+
+  m_module.sendJMSG(target_party_id, message,
+                    TYPE_AndruavMessage_CAMERA_OVERLAY_ACTION, true);
+
+#ifdef DEBUG_OVERLAY_MSG
+  std::cout << "overlay send REMOVE id:" << TRACKER_OVERLAY_TEXT_ID
+            << std::endl;
+#endif
+}
+
+void CTracker_Facade::sendCameraOverlayRemove(
+    const std::string &target_party_id) const {
+  m_overlay_send_count = 0;
+  m_overlay_crosshair_send_count = 0;
+  m_overlay_text_send_count = 0;
+
+  Json_de message = {
+      {"a", CAMERA_OVERLAY_ACTION_REMOVE_SHAPE},
+      {"i", {TRACKER_OVERLAY_SHAPE_ID, TRACKER_OVERLAY_CROSSHAIR_ID,
+             TRACKER_OVERLAY_TEXT_ID}}};
+
+  m_module.sendJMSG(target_party_id, message,
+                    TYPE_AndruavMessage_CAMERA_OVERLAY_ACTION, true);
+
+#ifdef DEBUG_OVERLAY_MSG
+  std::cout << "overlay send REMOVE ids:" << TRACKER_OVERLAY_SHAPE_ID << ","
+            << TRACKER_OVERLAY_CROSSHAIR_ID << "," << TRACKER_OVERLAY_TEXT_ID
             << std::endl;
 #endif
 }

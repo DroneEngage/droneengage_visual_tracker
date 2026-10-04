@@ -587,6 +587,42 @@ void CTrackerMain::onCameraOverlayRect(const float &x, const float &y,
 }
 
 /**
+ * Called by CTracker when de_camera_draw is enabled and the center crosshair
+ * should be (re)sent. Coordinates are normalized [0..1], (0,0) top-left.
+ */
+void CTrackerMain::onCameraOverlayCrosshair(const float &cx, const float &cy,
+                                            const float &arm) {
+  m_tracker_facade.sendCameraOverlayCrosshair(std::string(""), cx, cy, arm);
+}
+
+/**
+ * Called by CTracker when de_camera_draw is enabled and a status text should
+ * be shown on the de_camera overlay.
+ */
+void CTrackerMain::onCameraOverlayText(const float &x, const float &y,
+                                       const float &text_height,
+                                       const std::string &text) {
+  m_tracker_facade.sendCameraOverlayText(std::string(""), x, y, text_height,
+                                         text);
+}
+
+/**
+ * Called by CTracker when only the tracking rectangle should be removed from
+ * the de_camera overlay (track lost while the session keeps running).
+ */
+void CTrackerMain::onCameraOverlayRemoveRect() {
+  m_tracker_facade.sendCameraOverlayRemoveRect(std::string(""));
+}
+
+/**
+ * Called by CTracker when the failure/status text should be removed from the
+ * de_camera overlay (track recovered).
+ */
+void CTrackerMain::onCameraOverlayRemoveText() {
+  m_tracker_facade.sendCameraOverlayRemoveText(std::string(""));
+}
+
+/**
  * Called by CTracker when the tracking rectangle should be removed from the
  * de_camera overlay (track lost, paused, stopped, or draw mode disabled).
  */

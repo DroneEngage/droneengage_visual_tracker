@@ -280,9 +280,13 @@ void CTracker::setCameraDraw(const bool de_camera_draw) {
 }
 
 void CTracker::clearCameraOverlayShape() {
-  if (m_overlay_shape_drawn && m_callback_tracker != nullptr) {
+  if ((m_overlay_shape_drawn || m_overlay_crosshair_drawn ||
+       m_overlay_failure_drawn) &&
+      m_callback_tracker != nullptr) {
     m_callback_tracker->onCameraOverlayRemove();
     m_overlay_shape_drawn = false;
+    m_overlay_crosshair_drawn = false;
+    m_overlay_failure_drawn = false;
   }
 }
 
@@ -495,6 +499,12 @@ void CTracker::track2Rect(const float x, const float y, const float w,
       }
 
       if (track_success) {
+        // tracking recovered - take the failure note off the overlay
+        if (m_overlay_failure_drawn && m_callback_tracker) {
+          m_callback_tracker->onCameraOverlayRemoveText();
+          m_overlay_failure_drawn = false;
+        }
+
         // Draw bounding box on every frame regardless of update skip
         if (m_de_camera_draw) {
           // bbox only changes when the tracker update runs, so the camera
@@ -533,20 +543,46 @@ void CTracker::track2Rect(const float x, const float y, const float w,
           }
         }
       } else {
-        if (m_de_camera_draw)
-          clearCameraOverlayShape();
-        cv::putText(frame, "Tracking failure detected", cv::Point(100, 80),
-                    cv::FONT_HERSHEY_SIMPLEX, 0.75, cv::Scalar(0, 0, 255), 2);
+        if (m_de_camera_draw) {
+          // drop the tracking rect only - the crosshair stays. Show the
+          // failure note through de_camera's overlay instead of painting it
+          // on the frame.
+          if (m_overlay_shape_drawn && m_callback_tracker) {
+            m_callback_tracker->onCameraOverlayRemoveRect();
+            m_overlay_shape_drawn = false;
+          }
+          if (m_callback_tracker) {
+            m_callback_tracker->onCameraOverlayText(
+                revScaleX(100), revScaleY(80), revScaleY(25),
+                "Tracking failure detected");
+            m_overlay_failure_drawn = true;
+          }
+        } else {
+          cv::putText(frame, "Tracking failure detected", cv::Point(100, 80),
+                      cv::FONT_HERSHEY_SIMPLEX, 0.75, cv::Scalar(0, 0, 255), 2);
+        }
         m_valid_track = false;
       }
       // Draw crosshair if tracking was started and crosshair is enabled
       if (m_crosshair) {
-        cv::line(frame, cv::Point(center_x - cross_arm_length, center_y),
-                 cv::Point(center_x + cross_arm_length, center_y),
-                 cv::Scalar(0, 255, 0), 2);
-        cv::line(frame, cv::Point(center_x, center_y - cross_arm_length),
-                 cv::Point(center_x, center_y + cross_arm_length),
-                 cv::Scalar(0, 255, 0), 2);
+        if (m_de_camera_draw) {
+          // static '+' at frame center - sent as de_camera overlay shapes
+          // instead of painting them on the frame. The facade re-sends the
+          // SET_SHAPE periodically so the shape survives a de_camera restart.
+          if (m_callback_tracker) {
+            m_callback_tracker->onCameraOverlayCrosshair(
+                revScaleX(center_x), revScaleY(center_y),
+                revScaleY(cross_arm_length));
+            m_overlay_crosshair_drawn = true;
+          }
+        } else {
+          cv::line(frame, cv::Point(center_x - cross_arm_length, center_y),
+                   cv::Point(center_x + cross_arm_length, center_y),
+                   cv::Scalar(0, 255, 0), 2);
+          cv::line(frame, cv::Point(center_x, center_y - cross_arm_length),
+                   cv::Point(center_x, center_y + cross_arm_length),
+                   cv::Scalar(0, 255, 0), 2);
+        }
       }
     }
 

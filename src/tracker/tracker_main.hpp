@@ -127,6 +127,10 @@ namespace tracker
             void onTrack (const float& x, const float& y, const float& width, const float& height, const bool should_skip_message) override ;
             void onTrackStatusChanged (const int& track) override ;
             void onCameraOverlayRect (const float& x, const float& y, const float& width, const float& height) override ;
+            void onCameraOverlayCrosshair (const float& cx, const float& cy, const float& arm) override ;
+            void onCameraOverlayText (const float& x, const float& y, const float& text_height, const std::string& text) override ;
+            void onCameraOverlayRemoveRect () override ;
+            void onCameraOverlayRemoveText () override ;
             void onCameraOverlayRemove () override ;
 
             inline uint8_t getTrackingCameraDirection() const

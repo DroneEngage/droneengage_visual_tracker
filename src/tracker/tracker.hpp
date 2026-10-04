@@ -59,6 +59,12 @@ public:
   virtual void onTrackStatusChanged(const int &track) = 0;
   virtual void onCameraOverlayRect(const float &x, const float &y,
                                    const float &width, const float &height) = 0;
+  virtual void onCameraOverlayCrosshair(const float &cx, const float &cy,
+                                        const float &arm) = 0;
+  virtual void onCameraOverlayText(const float &x, const float &y,
+                                   const float &text_height, const std::string &text) = 0;
+  virtual void onCameraOverlayRemoveRect() = 0;
+  virtual void onCameraOverlayRemoveText() = 0;
   virtual void onCameraOverlayRemove() = 0;
 };
 
@@ -151,6 +157,8 @@ private:
   bool m_crosshair = true;
   bool m_de_camera_draw = false;
   bool m_overlay_shape_drawn = false;
+  bool m_overlay_crosshair_drawn = false;
+  bool m_overlay_failure_drawn = false;
 
   uint32_t m_target_fps = 30;
 

@@ -51,10 +51,16 @@ namespace tracker
             void sendTrackingTargetStatus(const std::string& target_party_id, const int status) const;
             void sendTrackingConfig(const std::string& target_party_id) const;
             void sendCameraOverlayRect(const std::string& target_party_id, const float& x, const float& y, const float& w, const float& h) const;
+            void sendCameraOverlayCrosshair(const std::string& target_party_id, const float& cx, const float& cy, const float& arm) const;
+            void sendCameraOverlayText(const std::string& target_party_id, const float& x, const float& y, const float& text_height, const std::string& text) const;
+            void sendCameraOverlayRemoveRect(const std::string& target_party_id) const;
+            void sendCameraOverlayRemoveText(const std::string& target_party_id) const;
             void sendCameraOverlayRemove(const std::string& target_party_id) const;
         protected:
 
             mutable uint32_t m_overlay_send_count = 0;
+            mutable uint32_t m_overlay_crosshair_send_count = 0;
+            mutable uint32_t m_overlay_text_send_count = 0;
 
     };
 }
