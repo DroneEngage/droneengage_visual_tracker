@@ -8,3 +8,4 @@ de_tracker.config.local
 de_tracker.local
 *.bak_*
 local/
+.cache/
