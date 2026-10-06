@@ -1,4 +1,4 @@
-# AGENTS.md — drone_engage_tracking
+# AGENTS.md — droneengage_tracking
 
 DroneEngage object tracker (`de_tracker`). Reads video from an input
 device (physical camera or a `v4l2loopback` virtual device from an
