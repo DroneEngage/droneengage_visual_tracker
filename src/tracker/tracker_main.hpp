@@ -7,6 +7,7 @@
 #include <string>
 
 #include "tracker.hpp"
+#include "lock_on.hpp"
 #include "tracker_facade.hpp"
 
 
@@ -22,15 +23,6 @@ namespace de
 {
 namespace tracker
 {
-
-    struct AIDetection {
-        float x, y, w, h;
-        float confidence;
-        std::chrono::steady_clock::time_point timestamp;
-        
-        AIDetection(float x_, float y_, float w_, float h_, float conf)
-            : x(x_), y(y_), w(w_), h(h_), confidence(conf), timestamp(std::chrono::steady_clock::now()) {}
-    };
 
     class CTrackerMain: public de::tracker::CCallBack_Tracker, de::comm::CCommon_Callback
     {
@@ -94,14 +86,16 @@ namespace tracker
             void stopTracking();
 
         public:
-            
-            void onAITrackerBestRect(const float x, const float y, const float w, const float h);
-            void onAITrackerBestRectWithConfidence(const float x, const float y, const float w, const float h, const float confidence);
-            bool shouldReinitializeTracker(const AIDetection& detection);
-            bool hasConsistentDetections();
-            float calculateDetectionStability();
+
+            // confirmed observations from the perceiver (obs, 6546)
+            void onObservations(const de::ai::ObservationFrame& frame);
+
+            // lock-on (visual_tracker.lock / .unlock); manual rect commands unlock
+            void lockTrk(const int64_t trk);
+            void lockClass(const std::string& cls);
+            void unlock();
+
             bool shouldContinueTracking();
-            bool isTrackingRectOutOfAISquare(const float ai_x, const float ai_y, const float ai_w, const float ai_h);
             void onTrackerLost();
             void onTrackerRecovered();
             
@@ -165,6 +159,8 @@ namespace tracker
             static const char *trackingStateName(const int status);
             static const char *aiStateName(const int status);
             void requestAIClassList();
+            void seedTracker(const float x, const float y, const float w, const float h);
+            de::tracker::LockConfig currentLockConfig() const;
 
         private:
         
@@ -181,16 +177,12 @@ namespace tracker
             std::vector<std::string> m_ai_class_names;
             bool m_caps_advertised = false;
             
-            // AI Detection Buffer for temporal smoothing
-            std::vector<AIDetection> m_ai_detection_buffer;
-            int AI_DETECTION_BUFFER_SIZE = 5;
-            float MIN_AI_CONFIDENCE_THRESHOLD = 0.5f;
-            float MIN_DETECTION_STABILITY_THRESHOLD = 0.7f;
-            int DETECTION_TIMEOUT_MS = 2000;
-            
-            // Flag to indicate waiting for first AI detection after enableTracking()
-            bool m_waiting_for_first_ai_detection = false;
-            
+            // lock-on target selection (obs carry stable, already confirmed track ids)
+            std::mutex m_lock_mutex;
+            de::tracker::CLockOn m_lock;
+            int m_lock_class_reacquire_frames = 15;
+            int m_lock_reseed_cooldown_frames = 10;
+
             // Tracker recovery behavior
             bool m_ai_assisted_recovery_enabled = true;
             bool m_ai_priority = false;                   // Prioritize AI detections over current tracking

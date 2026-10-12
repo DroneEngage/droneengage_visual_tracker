@@ -9,3 +9,5 @@ de_tracker.local
 *.bak_*
 local/
 .cache/
+test/test_lock_on
+test/test_capabilities

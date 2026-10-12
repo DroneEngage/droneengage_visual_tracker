@@ -12,12 +12,16 @@ static constexpr uint32_t TRACKER_OVERLAY_CROSSHAIR_ID = 9002;
 static constexpr uint32_t TRACKER_OVERLAY_TEXT_ID = 9004;
 
 void CTracker_Facade::sendTrackingTargetsLocation(
-    const std::string &target_party_id, const Json_de targets_location) const {
+    const std::string &target_party_id, const Json_de targets_location,
+    const Json_de extra) const {
   if (targets_location.empty()) {
     return;
   }
 
   Json_de message = {{"t", targets_location}};
+  if (extra.is_object()) {
+    for (auto it = extra.begin(); it != extra.end(); ++it) message[it.key()] = it.value();
+  }
 
 #ifdef DDEBUG
   std::cout << "tracking:" << targets_location.dump() << std::endl;

@@ -47,7 +47,7 @@ namespace tracker
 
         public:
            
-            void sendTrackingTargetsLocation(const std::string& target_party_id, const Json_de targets_location) const;
+            void sendTrackingTargetsLocation(const std::string& target_party_id, const Json_de targets_location, const Json_de extra = Json_de::object()) const;
             void sendTrackingTargetStatus(const std::string& target_party_id, const int status) const;
             void sendTrackingConfig(const std::string& target_party_id) const;
             void sendCameraOverlayRect(const std::string& target_party_id, const float& x, const float& y, const float& w, const float& h) const;

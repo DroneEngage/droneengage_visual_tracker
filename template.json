@@ -145,37 +145,21 @@
                         "optional": false,
                         "desc": "EMA smoothing alpha (0.0-1.0)"
                     },
-                    "ai_confidence_threshold": {
-                        "fieldName": "ai_confidence_threshold",
+                    "lock_class_reacquire_frames": {
+                        "fieldName": "lock_class_reacquire_frames",
                         "order":4,
                         "type": "number",
-                        "defaultvalue": 0.6,
+                        "defaultvalue": 15,
                         "optional": false,
-                        "desc": "Minimum confidence for AI detections"
+                        "desc": "Lock by class: observation frames a locked track may be absent before another track of the class is taken"
                     },
-                    "ai_stability_threshold": {
-                        "fieldName": "ai_stability_threshold", 
+                    "lock_reseed_cooldown_frames": {
+                        "fieldName": "lock_reseed_cooldown_frames",
                         "order":5,
                         "type": "number",
-                        "defaultvalue": 0.75,
+                        "defaultvalue": 10,
                         "optional": false,
-                        "desc": "Minimum stability score for re-initialization"
-                    },
-                    "ai_detection_buffer_size": {
-                        "fieldName": "ai_detection_buffer_size",
-                        "order":6,
-                        "type": "number",
-                        "defaultvalue": 5,
-                        "optional": false,
-                        "desc": "Number of recent detections to consider"
-                    },
-                    "ai_detection_timeout_ms": {
-                        "fieldName": "ai_detection_timeout_ms",
-                        "order":7,
-                        "type": "number", 
-                        "defaultvalue": 2000,
-                        "optional": false,
-                        "desc": "Maximum age of detections in buffer"
+                        "desc": "Observation frames between re-seeds while the pixel tracker is not tracking"
                     },
                     "ai_assisted_recovery_enabled": {
                         "fieldName": "ai_assisted_recovery_enabled",

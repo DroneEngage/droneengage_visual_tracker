@@ -86,44 +86,26 @@ AI Detection → Track Processing → Status Updates
 **Processing**: Updates tracker's AI status and adjusts tracking behavior accordingly. 
 **AI Feedback Integration**: Uses `m_tracker_main.setAITrackerStatus(status)`  to synchronize AI recognition status with the tracking engine.
 
-### 3. TYPE_AndruavMessage_AI_Recognition_TargetLocation (1078) ⚠️ YOLO Dependency
-**Purpose**: Receive detected object locations from YOLO modules
+### 3. TYPE_AndruavMessage_AI_OBSERVATIONS (6546)
 
-**Message Structure**:
-```json
-{
-  "mt": 1078,
-  "ms": {
-    "t": [<targets_array>]  // All detected objects
-  }
-}
-```
-
-OR
+Replaces the removed best-box message. The perceiver (`de_perceive`, `de_ir_camera`) publishes one frame of **confirmed** observations with stable track ids; de_tracker does no filtering of its own.
 
 ```json
-{
-  "mt": 1078,
-  "ms": {
-    "b": {                // Best/targeted object
-      "x": <float>,      // X coordinate
-      "y": <float>,      // Y coordinate  
-      "w": <float>,      // Width
-      "h": <float>       // Height
-    }
-  }
-}
+{ "mt": 6546, "ms": { "cam_id": "DE-TRK", "tm_capture": 123456789,
+  "obs": [ { "trk": 7, "cls": "person", "conf": 0.91, "box": [0.40, 0.25, 0.10, 0.30] } ] } }
 ```
 
-**Processing**: 
-- "t" field: Logs all detected objects for debugging
-- "b" field: Extracts best object coordinates and forwards to tracking engine
+`box` = `[x,y,w,h]`, normalized, **top-left origin**, 0..1. Invalid frames are dropped (strict parser, `de_common/helpers/obs.hpp`).
 
-**AI Feedback Integration**:
-The tracker module uses AI feedback to update tracking coordinates in real-time:
-1. **Status Updates**: `m_tracker_main.setAITrackerStatus(status)` synchronizes AI recognition status with the tracker
-2. **Location Updates**: `m_tracker_main.onAITrackerBestRect(x, y, w, h)` forwards the best detected object coordinates to the tracking engine
-3. **Coordinate Processing**: Converts YOLO bounding box coordinates to tracker coordinate system (center point calculation)
+**Processing**: the lock-on (`src/tracker/lock_on.hpp`) decides which track to hold and seeds the pixel tracker from that observation's box:
+- `lock {trk}` holds track `trk`; if it vanishes and the same id reappears the pixel tracker is re-seeded on it. Other ids never take over.
+- `lock {class}` holds the first confirmed track (lowest id) of the class (`""` = any class; `TRACKING_ENABLE` arms this). If that track stays absent for `lock_class_reacquire_frames` frames the next track of the class is taken.
+- `unlock` / `TRACKING_STOP` / a manual region command (`TRACKING_POINT`, `TRACKING_REGION`, `visual_tracker.track`) drop the lock.
+- If the pixel tracker is not tracking, the lock re-seeds after `lock_reseed_cooldown_frames` frames; with `ai_priority` on it also re-seeds when the pixel tracker centre drifts more than `ai_priority_distance_threshold` of the image diagonal from the locked track.
+
+Control surface (capability namespace `visual_tracker`): actions `lock {trk | class}`, `unlock`, `track {target}`, `start {class}`, `stop`; state `lock` = `none | trk:<id> | class:<label> | class:*`.
+
+**Output** (`TrackingTargetLocation`, 1043): `t` keeps the centred (-0.5..0.5) guidance deltas that DE-Pilot consumes; additive fields `box` (the tracked box, **top-left [0..1]**, same convention as `obs`) and `trk` (when locked on a track).
 
 ### 4. TYPE_AndruavMessage_RemoteExecute (1005)
 **Purpose**: Execute remote commands on the tracker module
@@ -205,10 +187,8 @@ GCS/Controller → Tracker Module
 ### YOLO AI Integration Flow
 ```
 YOLO AI Module → Tracker Module → GCS/Controller
-├── AI_Recognition_TargetLocation (1078) - "b" field: Best object
-│   └── Processing: Extract coordinates, update tracking
-├── AI_Recognition_TargetLocation (1078) - "t" field: All objects
-│   └── Processing: Debug logging only
+├── AI_OBSERVATIONS (6546) - confirmed tracks with trk
+│   └── Processing: lock-on picks the track, seeds the pixel tracker
 └── AI_Recognition_STATUS (1077) - Status updates
     └── Processing: Update AI tracker status
 ```
@@ -247,7 +227,7 @@ Detection → Processing → Status Updates
 #define TYPE_AndruavMessage_TrackingTargetLocation          1043
 #define TYPE_AndruavMessage_TargetTracking_STATUS           1044
 #define TYPE_AndruavMessage_AI_Recognition_STATUS           1077
-#define TYPE_AndruavMessage_AI_Recognition_TargetLocation   1078
+#define TYPE_AndruavMessage_AI_OBSERVATIONS                 6546
 #define TYPE_AndruavMessage_RemoteExecute                   1005
 #define TYPE_AndruavMessage_CONFIG_ACTION                   1025
 ```

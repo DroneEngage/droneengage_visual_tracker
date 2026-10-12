@@ -145,43 +145,17 @@ void CTrackerAndruavMessageParser::parseCommand(Json_de &andruav_message, const 
     }
     break;
 
-    case TYPE_AndruavMessage_AI_Recognition_TargetLocation:
+    case TYPE_AndruavMessage_AI_OBSERVATIONS:
     {
-
-        if (cmd.contains("t") && cmd["t"].is_array())
+        de::ai::ObservationFrame frame;
+        std::string err;
+        if (!de::ai::obsParse(cmd, frame, err))
         {
-            const Json_de obj = cmd["t"];
-
-#ifdef DDEBUG
-            std::cout << "ALL AI Object:" << obj.dump() << std::endl;
-#endif
+            std::cout << "dropping invalid observation frame: " << err << std::endl;
+            return;
         }
 
-        if (cmd.contains("b") && cmd["b"].is_object())
-        {
-            const Json_de obj = cmd["b"];
-
-            const float x = obj["x"].get<float>();
-            const float y = obj["y"].get<float>();
-            const float w = obj["w"].get<float>();
-            const float h = obj["h"].get<float>();
-            
-            // Extract confidence if available, default to 1.0 for backward compatibility
-            float confidence = 1.0f;
-            if (obj.contains("conf") && obj["conf"].is_number()) {
-                confidence = obj["conf"].get<float>();
-            }
-
-            const float centerX = -0.5 + x + w / 2.0;
-            const float centerY = -0.5 + y + h / 2.0;
-
-#ifdef DDEBUG
-            std::cout << "Best AI Object:" << obj.dump() << std::endl;
-            std::cout << "Best AI Object:" << centerX << ":" << centerY << " conf:" << confidence << std::endl;
-#endif
-
-            m_tracker_main.onAITrackerBestRectWithConfidence(x, y, w, h, confidence);
-        }
+        m_tracker_main.onObservations(frame);
     }
     break;
     }

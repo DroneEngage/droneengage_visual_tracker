@@ -29,6 +29,15 @@ Out-of-source in `build/`. Binaries: `bin/de_tracker`,
 OpenCV 4.5+, Threads, ONNX Runtime (for the tracker model). plog in
 `3rdparty` if present.
 
+## Lock-on
+
+de_tracker consumes confirmed observations (`obs`, 6546,
+`de_common/helpers/obs.hpp`) and is told which track to hold
+(`visual_tracker.lock {trk|class}` / `unlock`, `src/tracker/lock_on.hpp`);
+it does no AI confidence/stability filtering. On hosts whose `/usr/local`
+OpenCV needs a CUDA cmake config pass
+`OpenCV_DIR=/usr/lib/x86_64-linux-gnu/cmake/opencv4` to `./build.sh`.
+
 ## Config
 
 - `de_tracker.config.module.json` — module config (WebClient UI).
@@ -41,5 +50,5 @@ OpenCV 4.5+, Threads, ONNX Runtime (for the tracker model). plog in
 
 `src/` — `main.cpp`, `tracker/`, `de_common/` (vendored), `defines.hpp`,
 `version.hpp`. `wiki/` — `AI Interaction with Tracker.md`,
-`messages-documentation.md`. `AI_ENHANCEMENT_PRIORITY1.md` — AI work
-notes. `scripts/` — helper scripts. `local/` — machine-specific.
+`messages-documentation.md`. `test/` — `make -C test test`
+(lock-on rules, capability advert; no video needed). `scripts/` — helper scripts. `local/` — machine-specific.

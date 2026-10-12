@@ -24,7 +24,7 @@
                         TYPE_AndruavMessage_TrackingTargetLocation,\
                         TYPE_AndruavMessage_TrackingTarget_STATUS,\
                         TYPE_AndruavMessage_AI_Recognition_STATUS,\
-                        TYPE_AndruavMessage_AI_Recognition_TargetLocation,\
+                        TYPE_AndruavMessage_AI_OBSERVATIONS,\
                         TYPE_AndruavMessage_CONFIG_ACTION, \
                         TYPE_AndruavMessage_DUMMY}
 

@@ -9,6 +9,7 @@
 #include "../de_common/helpers/helpers.hpp"
 #include "tracker.hpp"
 #include "tracker_main.hpp"
+#include "tracker_capabilities.hpp"
 #include "video.hpp"
 #include "../version.hpp"
 
@@ -325,23 +326,15 @@ bool CTrackerMain::readConfigParameters() {
       m_ema_alpha_base = advanced_tracking["ema_alpha_base"].get<double>();
     }
 
-    // Load AI enhancement parameters
-    if (advanced_tracking.contains("ai_confidence_threshold")) {
-      MIN_AI_CONFIDENCE_THRESHOLD = advanced_tracking["ai_confidence_threshold"].get<float>();
+    // Lock-on parameters
+    if (advanced_tracking.contains("lock_class_reacquire_frames")) {
+      m_lock_class_reacquire_frames = advanced_tracking["lock_class_reacquire_frames"].get<int>();
     }
-    
-    if (advanced_tracking.contains("ai_stability_threshold")) {
-      MIN_DETECTION_STABILITY_THRESHOLD = advanced_tracking["ai_stability_threshold"].get<float>();
+
+    if (advanced_tracking.contains("lock_reseed_cooldown_frames")) {
+      m_lock_reseed_cooldown_frames = advanced_tracking["lock_reseed_cooldown_frames"].get<int>();
     }
-    
-    if (advanced_tracking.contains("ai_detection_buffer_size")) {
-      AI_DETECTION_BUFFER_SIZE = advanced_tracking["ai_detection_buffer_size"].get<int>();
-    }
-    
-    if (advanced_tracking.contains("ai_detection_timeout_ms")) {
-      DETECTION_TIMEOUT_MS = advanced_tracking["ai_detection_timeout_ms"].get<int>();
-    }
-    
+
     // Load tracker recovery parameters
     if (advanced_tracking.contains("ai_assisted_recovery_enabled")) {
       m_ai_assisted_recovery_enabled = advanced_tracking["ai_assisted_recovery_enabled"].get<bool>();
@@ -374,10 +367,10 @@ bool CTrackerMain::readConfigParameters() {
             << _INFO_CONSOLE_TEXT
             << ", ema_alpha_base: " << _LOG_CONSOLE_BOLD_TEXT
             << m_ema_alpha_base << _INFO_CONSOLE_TEXT
-            << ", ai_confidence_threshold: " << _LOG_CONSOLE_BOLD_TEXT
-            << MIN_AI_CONFIDENCE_THRESHOLD << _INFO_CONSOLE_TEXT
-            << ", ai_stability_threshold: " << _LOG_CONSOLE_BOLD_TEXT
-            << MIN_DETECTION_STABILITY_THRESHOLD << _INFO_CONSOLE_TEXT
+            << ", lock_class_reacquire_frames: " << _LOG_CONSOLE_BOLD_TEXT
+            << m_lock_class_reacquire_frames << _INFO_CONSOLE_TEXT
+            << ", lock_reseed_cooldown_frames: " << _LOG_CONSOLE_BOLD_TEXT
+            << m_lock_reseed_cooldown_frames << _INFO_CONSOLE_TEXT
             << ", ai_assisted_recovery_enabled: " << _LOG_CONSOLE_BOLD_TEXT
             << (m_ai_assisted_recovery_enabled ? "true" : "false") << _INFO_CONSOLE_TEXT
             << ", ai_priority: " << _LOG_CONSOLE_BOLD_TEXT
@@ -416,24 +409,30 @@ void CTrackerMain::startTrackingRect(const float x, const float y,
   std::cout << _INFO_CONSOLE_BOLD_TEXT << "rect:" << x << ":" << y << ":" << w
             << ":" << h << (is_ai_driven ? " (AI-driven)" : " (manual)") << std::endl;
 #endif
+  (void)is_ai_driven;
 
   if (m_tracker_status == TrackingTarget_STATUS_TRACKING_STOPPED)
     return;
 
-  // Reset AI detection waiting state when manual tracking starts
-  m_waiting_for_first_ai_detection = false;
+  // an explicit region overrides any lock-on
+  unlock();
 
-  // For AI-driven updates during lost tracking, try to be more seamless
-  if (is_ai_driven) {
-    // Don't print "tracking off" for AI-driven recovery
-    // We still need to stop and restart the tracker, but we'll suppress the message
-    m_tracker.get()->stop();
-    m_tracker.get()->trackRect(x, y, w, h, true);  // AI-driven
-  } else {
-    // For manual commands or other cases, allow normal behavior
-    m_tracker.get()->stop();
-    m_tracker.get()->trackRect(x, y, w, h, false);  // Manual
-  }
+  m_tracker.get()->stop();
+  m_tracker.get()->trackRect(x, y, w, h, false);  // Manual
+
+  m_tracker_facade.sendTrackingTargetStatus(std::string(""), m_tracker_status);
+}
+
+/**
+ * (Re)start the pixel tracker on a box taken from a locked observation.
+ * x,y top-left, all normalized 0..1.
+ */
+void CTrackerMain::seedTracker(const float x, const float y, const float w, const float h) {
+  if (m_tracker_status == TrackingTarget_STATUS_TRACKING_STOPPED)
+    return;
+
+  m_tracker.get()->stop();
+  m_tracker.get()->trackRect(x, y, w, h, true);  // observation-driven
 
   m_tracker_facade.sendTrackingTargetStatus(std::string(""), m_tracker_status);
 }
@@ -443,9 +442,8 @@ void CTrackerMain::enableTracking() {
   // this is not a real start for the tracker core.
   m_tracker_status = TrackingTarget_STATUS_TRACKING_ENABLED;
   
-  // Clear AI detection buffer when enabling tracking to start fresh
-  m_ai_detection_buffer.clear();
-  m_waiting_for_first_ai_detection = true;
+  // accept the first confirmed track of any class as the lock target
+  lockClass("");
 
   // ACK
   m_tracker_facade.sendTrackingTargetStatus(std::string(""), m_tracker_status);
@@ -458,9 +456,7 @@ void CTrackerMain::stopTracking() {
   m_tracker_status = TrackingTarget_STATUS_TRACKING_STOPPED;
   m_tracker.get()->stop();
   
-  // Reset AI detection waiting state
-  m_waiting_for_first_ai_detection = false;
-  m_ai_detection_buffer.clear();
+  unlock();
 
   m_tracker_facade.sendTrackingTargetStatus(std::string(""), m_tracker_status);
   publishCapabilityState();
@@ -584,7 +580,14 @@ void CTrackerMain::onTrack(const float &x, const float &y, const float &width,
 #endif
 
   if (!should_skip_message) {
-    m_tracker_facade.sendTrackingTargetsLocation(std::string(""), targets);
+    // deltas stay centred (-0.5..0.5) for DE-Pilot; the tracked box rides along
+    // in the stack-wide convention: [x,y,w,h] normalized, top-left, 0..1
+    Json_de extra = Json_de::object({{"box", de::tracker::boxToWire(x, y, width, height)}});
+    {
+      std::lock_guard<std::mutex> lock(m_lock_mutex);
+      if (m_lock.locked() && m_lock.trk() >= 0) extra["trk"] = m_lock.trk();
+    }
+    m_tracker_facade.sendTrackingTargetsLocation(std::string(""), targets, extra);
   }
 }
 
@@ -710,228 +713,75 @@ bool CTrackerMain::shouldContinueTracking() {
   return true;
 }
 
-void CTrackerMain::onAITrackerBestRect(const float x, const float y,
-                                       const float w, const float h) {
-  // Legacy method - assume high confidence for backward compatibility
-  onAITrackerBestRectWithConfidence(x, y, w, h, 1.0f);
+void CTrackerMain::lockTrk(const int64_t trk) {
+  {
+    std::lock_guard<std::mutex> lock(m_lock_mutex);
+    m_lock.lockTrk(trk);
+  }
+  publishCapabilityState();
 }
 
-void CTrackerMain::onAITrackerBestRectWithConfidence(const float x, const float y,
-                                                     const float w, const float h, const float confidence) {
-  m_ai_tracker_status = TrackingTarget_STATUS_AI_Recognition_DETECTED;
+void CTrackerMain::lockClass(const std::string &cls) {
+  {
+    std::lock_guard<std::mutex> lock(m_lock_mutex);
+    m_lock.lockClass(cls);
+  }
+  publishCapabilityState();
+}
 
-#ifdef DEBUG
-  std::cout << "onAITrackerBestRectWithConfidence:" << m_tracker_status 
-            << " confidence:" << confidence << std::endl;
-#endif
+void CTrackerMain::unlock() {
+  bool changed = false;
+  {
+    std::lock_guard<std::mutex> lock(m_lock_mutex);
+    changed = m_lock.locked();
+    m_lock.unlock();
+  }
+  if (changed) publishCapabilityState();
+}
 
-  // Apply confidence threshold filtering
-  if (confidence < MIN_AI_CONFIDENCE_THRESHOLD) {
-#ifdef DDEBUG
-    std::cout << _INFO_CONSOLE_BOLD_TEXT << "AI detection filtered out due to low confidence: " 
-              << _LOG_CONSOLE_BOLD_TEXT << confidence << _NORMAL_CONSOLE_TEXT_ << std::endl;
-#endif
+de::tracker::LockConfig CTrackerMain::currentLockConfig() const {
+  de::tracker::LockConfig c;
+  c.class_reacquire_frames = m_lock_class_reacquire_frames;
+  c.reseed_cooldown_frames = m_lock_reseed_cooldown_frames;
+  c.drift_correction = m_ai_priority;
+  c.drift_distance = m_ai_priority_distance_threshold;
+  return c;
+}
+
+/**
+ * Observations are already confirmed and carry stable track ids, so nothing
+ * is filtered here: the lock decides which one to hold and seeds the pixel
+ * tracker from its box.
+ */
+void CTrackerMain::onObservations(const de::ai::ObservationFrame &frame) {
+  if (m_tracker_status == TrackingTarget_STATUS_TRACKING_STOPPED)
     return;
+
+  de::tracker::PixelTrackerState state;
+  state.tracking = (m_tracker_status == TrackingTarget_STATUS_TRACKING_DETECTED);
+  state.has_center = m_ema_init;
+  state.cx = m_ema_x + 0.5;  // EMA is kept in [-0.5,0.5]
+  state.cy = m_ema_y + 0.5;
+
+  de::tracker::LockBox seed;
+  bool reseed = false;
+  std::string before, after;
+  {
+    std::lock_guard<std::mutex> lock(m_lock_mutex);
+    m_lock.setConfig(currentLockConfig());
+    before = m_lock.describe();
+    reseed = m_lock.onObservations(frame, state, seed);
+    after = m_lock.describe();
   }
 
-  // If we're waiting for the first AI detection after enableTracking(), start immediately
-  if (m_waiting_for_first_ai_detection && (m_tracker_status == TrackingTarget_STATUS_TRACKING_ENABLED)) {
-    std::cout << _INFO_CONSOLE_BOLD_TEXT << "ai_rect (first detection):" << x << ":" << y << ":"
-              << w << ":" << h << " conf:" << confidence << std::endl;
-    startTrackingRect(x, y, w, h, true);  // AI-driven
-    m_waiting_for_first_ai_detection = false;
-    return;
+  if (reseed) {
+    std::cout << _INFO_CONSOLE_BOLD_TEXT << "lock (" << after << "):" << seed.x << ":" << seed.y << ":"
+              << seed.w << ":" << seed.h << _NORMAL_CONSOLE_TEXT_ << std::endl;
+    seedTracker(static_cast<float>(seed.x), static_cast<float>(seed.y),
+                static_cast<float>(seed.w), static_cast<float>(seed.h));
   }
 
-  // Create detection record
-  AIDetection detection(x, y, w, h, confidence);
-  
-  // Check if we should reinitialize tracker based on temporal consistency
-  if (shouldReinitializeTracker(detection)) {
-    if ((m_tracker_status == TrackingTarget_STATUS_TRACKING_LOST) ||
-        (m_tracker_status == TrackingTarget_STATUS_TRACKING_ENABLED)) {
-      std::cout << _INFO_CONSOLE_BOLD_TEXT << "ai_rect (stable):" << x << ":" << y << ":"
-                << w << ":" << h << " conf:" << confidence << std::endl;
-      startTrackingRect(x, y, w, h, true);  // AI-driven
-    }
-  } else {
-#ifdef DDEBUG
-    std::cout << _INFO_CONSOLE_BOLD_TEXT << "AI detection rejected due to temporal instability" 
-              << _NORMAL_CONSOLE_TEXT_ << std::endl;
-#endif
-  }
-  
-  // NEW: AI Priority logic - switch to AI even when actively tracking
-  if (m_ai_priority && m_tracker_status == TrackingTarget_STATUS_TRACKING_DETECTED) {
-    if (isTrackingRectOutOfAISquare(x, y, w, h) && shouldReinitializeTracker(detection)) {
-      std::cout << _INFO_CONSOLE_BOLD_TEXT << "ai_rect (priority override):" << x << ":" << y << ":"
-                << w << ":" << h << " conf:" << confidence << std::endl;
-      startTrackingRect(x, y, w, h, true);  // AI-driven
-    }
-  }
-}
-
-bool CTrackerMain::shouldReinitializeTracker(const AIDetection& detection) {
-  // Add new detection to buffer
-  m_ai_detection_buffer.push_back(detection);
-  
-  // Remove old detections beyond buffer size
-  while (m_ai_detection_buffer.size() > AI_DETECTION_BUFFER_SIZE) {
-    m_ai_detection_buffer.erase(m_ai_detection_buffer.begin());
-  }
-  
-  // Remove old detections beyond timeout
-  auto now = std::chrono::steady_clock::now();
-  for (auto it = m_ai_detection_buffer.begin(); it != m_ai_detection_buffer.end(); ) {
-    auto age = std::chrono::duration_cast<std::chrono::milliseconds>(now - it->timestamp);
-    if (age.count() > DETECTION_TIMEOUT_MS) {
-      it = m_ai_detection_buffer.erase(it);
-    } else {
-      ++it;
-    }
-  }
-  
-  // Check if we have enough detections for stability assessment
-  if (m_ai_detection_buffer.size() < 3) {
-    return false;  // Need at least 3 detections for stability
-  }
-  
-  // Calculate detection stability
-  float stability = calculateDetectionStability();
-  
-#ifdef DDEBUG
-  std::cout << _INFO_CONSOLE_BOLD_TEXT << "Detection stability: " 
-            << _LOG_CONSOLE_BOLD_TEXT << stability << _NORMAL_CONSOLE_TEXT_ << std::endl;
-#endif
-  
-  return stability >= MIN_DETECTION_STABILITY_THRESHOLD;
-}
-
-bool CTrackerMain::hasConsistentDetections() {
-  if (m_ai_detection_buffer.size() < 3) {
-    return false;
-  }
-  
-  // Check if all recent detections meet minimum confidence
-  for (const auto& det : m_ai_detection_buffer) {
-    if (det.confidence < MIN_AI_CONFIDENCE_THRESHOLD) {
-      return false;
-    }
-  }
-  
-  // Check positional consistency (detections should be relatively close)
-  const AIDetection& latest = m_ai_detection_buffer.back();
-  for (size_t i = 0; i < m_ai_detection_buffer.size() - 1; ++i) {
-    const AIDetection& prev = m_ai_detection_buffer[i];
-    
-    // Calculate center points
-    float latest_center_x = latest.x + latest.w / 2.0f;
-    float latest_center_y = latest.y + latest.h / 2.0f;
-    float prev_center_x = prev.x + prev.w / 2.0f;
-    float prev_center_y = prev.y + prev.h / 2.0f;
-    
-    // Calculate distance between centers
-    float distance = std::sqrt(
-      std::pow(latest_center_x - prev_center_x, 2) + 
-      std::pow(latest_center_y - prev_center_y, 2)
-    );
-    
-    // If distance is too large, detections are inconsistent
-    if (distance > 0.2f) {  // 20% of image dimension
-      return false;
-    }
-  }
-  
-  return true;
-}
-
-float CTrackerMain::calculateDetectionStability() {
-  if (m_ai_detection_buffer.size() < 2) {
-    return 0.0f;
-  }
-  
-  float stability_score = 0.0f;
-  const AIDetection& latest = m_ai_detection_buffer.back();
-  
-  // Factor 1: Confidence consistency (40% weight)
-  float avg_confidence = 0.0f;
-  float confidence_variance = 0.0f;
-  
-  for (const auto& det : m_ai_detection_buffer) {
-    avg_confidence += det.confidence;
-  }
-  avg_confidence /= m_ai_detection_buffer.size();
-  
-  for (const auto& det : m_ai_detection_buffer) {
-    confidence_variance += std::pow(det.confidence - avg_confidence, 2);
-  }
-  confidence_variance /= m_ai_detection_buffer.size();
-  
-  float confidence_stability = 1.0f - std::min(confidence_variance, 1.0f);
-  stability_score += 0.4f * confidence_stability;
-  
-  // Factor 2: Positional consistency (40% weight)
-  float positional_variance = 0.0f;
-  float latest_center_x = latest.x + latest.w / 2.0f;
-  float latest_center_y = latest.y + latest.h / 2.0f;
-  
-  for (size_t i = 0; i < m_ai_detection_buffer.size() - 1; ++i) {
-    const AIDetection& prev = m_ai_detection_buffer[i];
-    float prev_center_x = prev.x + prev.w / 2.0f;
-    float prev_center_y = prev.y + prev.h / 2.0f;
-    
-    float distance = std::sqrt(
-      std::pow(latest_center_x - prev_center_x, 2) + 
-      std::pow(latest_center_y - prev_center_y, 2)
-    );
-    positional_variance += distance;
-  }
-  
-  positional_variance /= (m_ai_detection_buffer.size() - 1);
-  float positional_stability = std::max(0.0f, 1.0f - positional_variance * 5.0f);  // Scale factor
-  stability_score += 0.4f * positional_stability;
-  
-  // Factor 3: Temporal consistency (20% weight)
-  auto now = std::chrono::steady_clock::now();
-  auto age_ms = std::chrono::duration_cast<std::chrono::milliseconds>(now - latest.timestamp);
-  float temporal_factor = 1.0f - std::min(age_ms.count() / 1000.0f, 1.0f);  // Decay over 1 second
-  stability_score += 0.2f * temporal_factor;
-  
-  return std::min(stability_score, 1.0f);
-}
-
-bool CTrackerMain::isTrackingRectOutOfAISquare(const float ai_x, const float ai_y, const float ai_w, const float ai_h) {
-  // We need to get the current tracking rectangle from the tracker
-  // Since we don't have direct access to the current tracking rect, we'll need to store it
-  // For now, let's implement a basic version that assumes we can get the current tracking info
-  
-  // Calculate AI detection center
-  float ai_center_x = ai_x + ai_w / 2.0f;
-  float ai_center_y = ai_y + ai_h / 2.0f;
-  
-  // For now, we'll use the last EMA values as a proxy for current tracking position
-  // This is a limitation - ideally we should store the actual tracking rectangle
-  float tracking_center_x = static_cast<float>(m_ema_x) + 0.5f;  // Convert from [-0.5,0.5] to [0,1]
-  float tracking_center_y = static_cast<float>(m_ema_y) + 0.5f;  // Convert from [-0.5,0.5] to [0,1]
-  
-  // Calculate distance between centers
-  float distance = std::sqrt(
-    std::pow(ai_center_x - tracking_center_x, 2) + 
-    std::pow(ai_center_y - tracking_center_y, 2)
-  );
-  
-  // Calculate image diagonal (normalized coordinates, so diagonal is sqrt(2))
-  float image_diagonal = std::sqrt(2.0f);
-  float threshold_distance = image_diagonal * m_ai_priority_distance_threshold;
-  
-#ifdef DDEBUG
-  std::cout << _INFO_CONSOLE_BOLD_TEXT << "AI Priority check - distance: " 
-            << _LOG_CONSOLE_BOLD_TEXT << distance << _INFO_CONSOLE_TEXT
-            << ", threshold: " << _LOG_CONSOLE_BOLD_TEXT << threshold_distance 
-            << _NORMAL_CONSOLE_TEXT_ << std::endl;
-#endif
-  
-  return distance > threshold_distance;
+  if (before != after) publishCapabilityState();
 }
 
 // ============================================================================
@@ -969,11 +819,17 @@ const char *CTrackerMain::aiStateName(const int status) {
 }
 
 void CTrackerMain::publishCapabilityState() {
+  std::string lock_state;
+  {
+    std::lock_guard<std::mutex> lock(m_lock_mutex);
+    lock_state = m_lock.describe();
+  }
   m_tracker_facade.publishState(
       "visual_tracker",
       Json_de::object(
           {{"tracking", trackingStateName(m_tracker_status)},
-           {"ai", aiStateName(m_ai_tracker_status)}}));
+           {"ai", aiStateName(m_ai_tracker_status)},
+           {"lock", lock_state}}));
 }
 
 /**
@@ -985,60 +841,13 @@ void CTrackerMain::publishCapabilityState() {
  * re-fetch it.
  */
 void CTrackerMain::setupCapabilities() {
-  // start {class}: an enum of the AI class list when it is known, a plain
-  // string otherwise (resolved against the list at invoke time)
-  Json_de class_param = Json_de::object(
-      {{"type", "string"}, {"required", true}, {"desc", "class to search for"}});
+  std::vector<std::string> class_names;
   {
     std::lock_guard<std::mutex> lock(m_ai_class_lock);
-    if (!m_ai_class_names.empty()) {
-      class_param = Json_de::object({{"type", "enum"},
-                                     {"required", true},
-                                     {"values", m_ai_class_names},
-                                     {"desc", "class to search for"}});
-    }
+    class_names = m_ai_class_names;
   }
 
-  const Json_de advert = Json_de::object(
-      {{"schema", "de.cap/1"},
-       {"ns", "visual_tracker"},
-       {"module", "droneengage_visual_tracker"},
-       {"ver", version_string},
-       {"actions",
-        Json_de::object(
-            {{"start",
-              Json_de::object(
-                  {{"desc", "enable AI recognition and search for a class"},
-                   {"params", Json_de::object({{"class", class_param}})}})},
-             {"stop",
-              Json_de::object({{"desc", "disable AI recognition"}})},
-             {"track",
-              Json_de::object(
-                  {{"desc", "track a region of the video frame"},
-                   {"params",
-                    Json_de::object(
-                        {{"target",
-                          Json_de::object(
-                              {{"type", "object"},
-                               {"required", true},
-                               {"desc", "normalized box, x,y top-left in 0..1"},
-                               {"fields",
-                                Json_de::object(
-                                    {{"x", Json_de::object({{"type", "number"}, {"required", true}, {"min", 0.0}, {"max", 1.0}})},
-                                     {"y", Json_de::object({{"type", "number"}, {"required", true}, {"min", 0.0}, {"max", 1.0}})},
-                                     {"w", Json_de::object({{"type", "number"}, {"required", true}, {"min", 0.01}, {"max", 1.0}})},
-                                     {"h", Json_de::object({{"type", "number"}, {"required", true}, {"min", 0.01}, {"max", 1.0}})}})}})}})}})}})},
-       {"state",
-        Json_de::object(
-            {{"tracking",
-              Json_de::object(
-                  {{"type", "enum"},
-                   {"values", {"lost", "detected", "enabled", "stopped",
-                               "config"}}})},
-             {"ai",
-              Json_de::object(
-                  {{"type", "enum"},
-                   {"values", {"lost", "detected", "enabled", "disabled"}}})}})}});
+  const Json_de advert = de::tracker::buildVisualTrackerAdvert(version_string, class_names);
 
   if (!m_tracker_facade.setCapabilities({advert.dump()})) {
     std::cout << _ERROR_CONSOLE_BOLD_TEXT_
@@ -1135,6 +944,31 @@ Json_de CTrackerMain::onCapabilityInvoke(const std::string &id,
     m_tracker_facade.sendAIRecognitionAction(
         Json_de::object({{"a", TrackingTarget_ACTION_AI_Recognition_DISABLE}}));
     return Json_de::object({{"stopped", true}});
+  }
+
+  if (act == "lock") {
+    const bool has_trk = params.contains("trk") && params["trk"].is_number_integer();
+    const bool has_cls = params.contains("class") && params["class"].is_string();
+    if (has_trk == has_cls) {
+      err = "lock needs exactly one of trk or class";
+      return Json_de::object();
+    }
+
+    // locking is the same request as enabling the tracker
+    if (m_tracker_status == TrackingTarget_STATUS_TRACKING_STOPPED) {
+      m_tracker_status = TrackingTarget_STATUS_TRACKING_ENABLED;
+      m_tracker_facade.sendTrackingTargetStatus(std::string(""), m_tracker_status);
+    }
+
+    if (has_trk) lockTrk(params["trk"].get<int64_t>());
+    else lockClass(params["class"].get<std::string>());
+
+    return Json_de::object({{"lock", [this]() { std::lock_guard<std::mutex> l(m_lock_mutex); return m_lock.describe(); }()}});
+  }
+
+  if (act == "unlock") {
+    unlock();
+    return Json_de::object({{"lock", "none"}});
   }
 
   if (act != "track") {
