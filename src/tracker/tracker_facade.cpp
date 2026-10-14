@@ -11,6 +11,14 @@ static constexpr uint32_t TRACKER_OVERLAY_SHAPE_ID = 9001;
 static constexpr uint32_t TRACKER_OVERLAY_CROSSHAIR_ID = 9002;
 static constexpr uint32_t TRACKER_OVERLAY_TEXT_ID = 9004;
 
+void CTracker_Facade::applyOverlayTarget(Json_de &message) const {
+  const std::string &overlay_target =
+      de::tracker::CTrackerMain::getInstance().getOverlayTarget();
+  if (!overlay_target.empty()) {
+    message["t"] = overlay_target;
+  }
+}
+
 void CTracker_Facade::sendTrackingTargetsLocation(
     const std::string &target_party_id, const Json_de targets_location,
     const Json_de extra) const {
@@ -112,6 +120,8 @@ void CTracker_Facade::sendCameraOverlayRect(
                {"y2", y + h}};
   }
 
+  applyOverlayTarget(message);
+
   m_module.sendJMSG(target_party_id, message,
                     TYPE_AndruavMessage_CAMERA_OVERLAY_ACTION, true);
 
@@ -119,6 +129,7 @@ void CTracker_Facade::sendCameraOverlayRect(
   static int overlay_send_counter = 0;
   if ((overlay_send_counter++ % 30) == 0) {
     std::cout << "overlay send rect:" << x << "," << y << " " << w << "x" << h
+              << " t:" << de::tracker::CTrackerMain::getInstance().getOverlayTarget()
               << std::endl;
   }
 #endif
@@ -153,12 +164,15 @@ void CTracker_Facade::sendCameraOverlayCrosshair(
       {"color", {0, 255, 0, 255}}};
 
   Json_de message = {{"a", CAMERA_OVERLAY_ACTION_SET_SHAPE}, {"s", shape}};
+  applyOverlayTarget(message);
 
   m_module.sendJMSG(target_party_id, message,
                     TYPE_AndruavMessage_CAMERA_OVERLAY_ACTION, true);
 
 #ifdef DEBUG_OVERLAY_MSG
-  std::cout << "overlay send crosshair:" << cx << "," << cy << std::endl;
+  std::cout << "overlay send crosshair:" << cx << "," << cy
+            << " t:" << de::tracker::CTrackerMain::getInstance().getOverlayTarget()
+            << std::endl;
 #endif
 }
 
@@ -188,12 +202,15 @@ void CTracker_Facade::sendCameraOverlayText(
       {"color", {200, 0, 0, 255}}};
 
   Json_de message = {{"a", CAMERA_OVERLAY_ACTION_SET_SHAPE}, {"s", shape}};
+  applyOverlayTarget(message);
 
   m_module.sendJMSG(target_party_id, message,
                     TYPE_AndruavMessage_CAMERA_OVERLAY_ACTION, true);
 
 #ifdef DEBUG_OVERLAY_MSG
-  std::cout << "overlay send text:'" << text << "'" << std::endl;
+  std::cout << "overlay send text:'" << text << "'"
+            << " t:" << de::tracker::CTrackerMain::getInstance().getOverlayTarget()
+            << std::endl;
 #endif
 }
 
@@ -203,12 +220,14 @@ void CTracker_Facade::sendCameraOverlayRemoveRect(
 
   Json_de message = {{"a", CAMERA_OVERLAY_ACTION_REMOVE_SHAPE},
                      {"i", TRACKER_OVERLAY_SHAPE_ID}};
+  applyOverlayTarget(message);
 
   m_module.sendJMSG(target_party_id, message,
                     TYPE_AndruavMessage_CAMERA_OVERLAY_ACTION, true);
 
 #ifdef DEBUG_OVERLAY_MSG
   std::cout << "overlay send REMOVE id:" << TRACKER_OVERLAY_SHAPE_ID
+            << " t:" << de::tracker::CTrackerMain::getInstance().getOverlayTarget()
             << std::endl;
 #endif
 }
@@ -219,12 +238,14 @@ void CTracker_Facade::sendCameraOverlayRemoveText(
 
   Json_de message = {{"a", CAMERA_OVERLAY_ACTION_REMOVE_SHAPE},
                      {"i", TRACKER_OVERLAY_TEXT_ID}};
+  applyOverlayTarget(message);
 
   m_module.sendJMSG(target_party_id, message,
                     TYPE_AndruavMessage_CAMERA_OVERLAY_ACTION, true);
 
 #ifdef DEBUG_OVERLAY_MSG
   std::cout << "overlay send REMOVE id:" << TRACKER_OVERLAY_TEXT_ID
+            << " t:" << de::tracker::CTrackerMain::getInstance().getOverlayTarget()
             << std::endl;
 #endif
 }
@@ -239,6 +260,7 @@ void CTracker_Facade::sendCameraOverlayRemove(
       {"a", CAMERA_OVERLAY_ACTION_REMOVE_SHAPE},
       {"i", {TRACKER_OVERLAY_SHAPE_ID, TRACKER_OVERLAY_CROSSHAIR_ID,
              TRACKER_OVERLAY_TEXT_ID}}};
+  applyOverlayTarget(message);
 
   m_module.sendJMSG(target_party_id, message,
                     TYPE_AndruavMessage_CAMERA_OVERLAY_ACTION, true);
@@ -246,6 +268,7 @@ void CTracker_Facade::sendCameraOverlayRemove(
 #ifdef DEBUG_OVERLAY_MSG
   std::cout << "overlay send REMOVE ids:" << TRACKER_OVERLAY_SHAPE_ID << ","
             << TRACKER_OVERLAY_CROSSHAIR_ID << "," << TRACKER_OVERLAY_TEXT_ID
+            << " t:" << de::tracker::CTrackerMain::getInstance().getOverlayTarget()
             << std::endl;
 #endif
 }

@@ -59,6 +59,10 @@ namespace tracker
             void sendAIRecognitionAction(const Json_de& cmd) const;
         protected:
 
+            /// stamps the resolved overlay target `t` (CA-0024); a "" target
+            /// leaves the message untouched = legacy draw-on-all-cameras
+            void applyOverlayTarget(Json_de& message) const;
+
             mutable uint32_t m_overlay_send_count = 0;
             mutable uint32_t m_overlay_crosshair_send_count = 0;
             mutable uint32_t m_overlay_text_send_count = 0;

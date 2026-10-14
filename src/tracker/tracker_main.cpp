@@ -7,6 +7,7 @@
 #include "../de_common/de_databus/messages.hpp"
 #include "../de_common/helpers/colors.hpp"
 #include "../de_common/helpers/helpers.hpp"
+#include "../de_common/helpers/overlay_target.hpp"
 #include "tracker.hpp"
 #include "tracker_main.hpp"
 #include "tracker_capabilities.hpp"
@@ -189,6 +190,7 @@ bool CTrackerMain::readConfigParameters() {
 
   m_source_video_device = "";
   m_output_video_device = "";
+  m_overlay_target = "";
   m_desired_input_width = 0;
   m_desired_input_height = 0;
 
@@ -259,6 +261,15 @@ bool CTrackerMain::readConfigParameters() {
                   << m_output_video_device << _NORMAL_CONSOLE_TEXT_
                   << std::endl;
       }
+    }
+
+    // which camera stream this module's overlays belong on (CA-0024);
+    // "" keeps the legacy draw-on-all-cameras behaviour
+    m_overlay_target = de::camera::resolveOverlayTarget(camera);
+    if (!m_overlay_target.empty()) {
+      std::cout << _LOG_CONSOLE_BOLD_TEXT
+                << "Overlay target t:" << _INFO_CONSOLE_BOLD_TEXT
+                << m_overlay_target << _NORMAL_CONSOLE_TEXT_ << std::endl;
     }
 
     // Optional desired input resolution

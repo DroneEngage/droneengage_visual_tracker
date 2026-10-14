@@ -152,6 +152,12 @@ namespace tracker
             {
                 return m_ai_priority;
             }
+            // resolved at config load (CA-0024): the CAMERA_OVERLAY_ACTION
+            // target `t`; "" = legacy draw-on-all-cameras
+            inline const std::string& getOverlayTarget() const
+            {
+                return m_overlay_target;
+            }
         private:
             bool readConfigParameters();
             void reloadParametersIfConfigChanged();
@@ -207,6 +213,7 @@ namespace tracker
 
             std::string m_source_video_device;
             std::string m_output_video_device;
+            std::string m_overlay_target;
             int m_desired_input_width = 0;
             int m_desired_input_height = 0;
 

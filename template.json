@@ -35,6 +35,20 @@
                         "optional": true,
                         "desc": "virtual video output by name."
                     },
+                    "cam_id": {
+                        "order":7,
+                        "type": "text",
+                        "defaultvalue": "",
+                        "optional": true,
+                        "desc": "module-layer camera id; overlay target t resolves to it before device names"
+                    },
+                    "overlay_target": {
+                        "order":8,
+                        "type": "text",
+                        "defaultvalue": "",
+                        "optional": true,
+                        "desc": "explicit CAMERA_OVERLAY_ACTION t override; empty = auto (cam_id, then device names)"
+                    },
                     "desired_input_width": {
                         "order":5,
                         "type": "number",

@@ -25,6 +25,8 @@
         //"output_video_device": "/dev/video3"
         //"source_video_device_name"          : "SIM-CAM1", //"SIM-CAM1", //"C270 HD WEBCAM",  // DE-RPI,DE-THERMAL,
         "output_video_device_name"          : "DE-TRK"
+        //"cam_id"                          : "cam0",       // module-layer camera id; stamped as overlay target t ahead of device names
+        //"overlay_target"                  : "cam0",       // explicit CAMERA_OVERLAY_ACTION t override; wins over cam_id/device fields
         //"desired_input_width"               : 1280,
         //"desired_input_height"              : 720
     },
