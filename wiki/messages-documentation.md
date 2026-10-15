@@ -15,7 +15,7 @@ The tracker module depends on YOLO AI modules for object detection and tracking:
                         TYPE_AndruavMessage_TrackingTargetLocation,\
                         TYPE_AndruavMessage_TargetTracking_STATUS,\
                         TYPE_AndruavMessage_AI_Recognition_STATUS,\
-                        TYPE_AndruavMessage_AI_Recognition_TargetLocation,\
+                        TYPE_AndruavMessage_AI_OBSERVATIONS,\
                         TYPE_AndruavMessage_CONFIG_ACTION, \
                         TYPE_AndruavMessage_DUMMY}
 ```
@@ -206,9 +206,8 @@ Detection → Processing → Status Updates
 ## Debug Output Messages
 
 ### Parser Debug Messages
-- **AI Objects**: `ALL AI Object:<json_data>` - All detected objects from YOLO
-- **Best AI Object**: `Best AI Object:<json_data>` - Best object details
-- **Best AI Coordinates**: `Best AI Object:<x>:<y>` - Extracted coordinates
+- **Observations**: `dropping invalid observation frame: <err>` - rejected observation frames
+- **AI Status**: `AI Driver Enabled` / `AI Driver Disabled` - AI driver status changes
 - **Remote Execute**: `cmd: <command_id>` format
 
 ### Facade Debug Messages
@@ -272,18 +271,18 @@ Detection → Processing → Status Updates
 ## YOLO AI Integration Details
 
 ### Message Processing
-1. **Receives AI Detection**: Processes `AI_Recognition_TargetLocation` messages
-2. **Extracts Coordinates**: Converts YOLO bounding boxes to tracking coordinates
-3. **Updates Tracking**: Forwards processed coordinates to tracking engine
+1. **Receives Observations**: Processes `AI_OBSERVATIONS` (6546) messages
+2. **Extracts Coordinates**: Converts the locked observation's `box` to tracking coordinates
+3. **Updates Tracking**: Lock-on seeds/re-seeds the pixel tracker from that box
 4. **Status Synchronization**: Maintains AI status for coordinated behavior
 
 ### Coordinate Transformation
 ```cpp
-// From YOLO AI message
-const float x = obj["x"].get<float>();
-const float y = obj["y"].get<float>();
-const float w = obj["w"].get<float>();
-const float h = obj["h"].get<float>();
+// From obs box [x,y,w,h] - normalized, top-left [0..1]
+const float x = box[0];
+const float y = box[1];
+const float w = box[2];
+const float h = box[3];
 
 // To tracker coordinate system
 // values ranges from -0.5 to + 0.5
@@ -292,8 +291,8 @@ const float centerY = -0.5 + y + h / 2.0;
 ```
 
 ### Debug Integration
-- Logs all AI objects for comprehensive debugging
-- Highlights best object selection and coordinate extraction
+- Logs invalid observation frames dropped by the strict parser
+- Highlights locked-track selection and coordinate extraction
 - Provides visibility into AI-tracker interaction
 
 ---
