@@ -11,13 +11,40 @@
 #include <vector>
 
 #include "../de_common/helpers/json_nlohmann.hpp"
+#include "../de_common/de_databus/cap_schema.hpp"
 
 namespace de
 {
 namespace tracker
 {
 
-inline nlohmann::json buildVisualTrackerAdvert (const std::string& version, const std::vector<std::string>& ai_class_names)
+/**
+ * @brief The de.cap namespace of a visual_tracker advert: one per cam_id,
+ * so several trackers on one unit (e.g. RGB + IR) each own a namespace.
+ * "visual_tracker_" + the cam_id lower-cased with every char outside
+ * [a-z0-9_] mapped to '_' (the de.cap name grammar has no '.'), capped at
+ * CAP_NAME_MAX_LEN. An empty cam_id gives the bare "visual_tracker".
+ * (MP-0217: a mission track step pins the tracker whose cam_id matches
+ * the confirming observation.)
+ */
+inline std::string visualTrackerNamespace (const std::string& cam_id)
+{
+  std::string ns = "visual_tracker";
+  if (cam_id.empty()) return ns;
+  ns += '_';
+  for (const char c : cam_id)
+  {
+    if (ns.size() >= CAP_NAME_MAX_LEN) break;
+    const char l = (c >= 'A' && c <= 'Z') ? static_cast<char>(c - 'A' + 'a') : c;
+    const bool ok = (l >= 'a' && l <= 'z') || (l >= '0' && l <= '9') || l == '_';
+    ns += ok ? l : '_';
+  }
+  return ns;
+}
+
+inline nlohmann::json buildVisualTrackerAdvert (const std::string& version,
+                                                const std::vector<std::string>& ai_class_names,
+                                                const std::string& cam_id = "")
 {
   using Json_de = nlohmann::json;
 
@@ -30,9 +57,14 @@ inline nlohmann::json buildVisualTrackerAdvert (const std::string& version, cons
                                    {"desc", "class to search for"}});
   }
 
+  const Json_de cam_param = Json_de::object(
+      {{"type", "string"},
+       {"optional", true},
+       {"desc", "cam_id routing hint; must match this tracker when present"}});
+
   const Json_de advert = Json_de::object(
       {{"schema", "de.cap/1"},
-       {"ns", "visual_tracker"},
+       {"ns", visualTrackerNamespace(cam_id)},
        {"module", "droneengage_visual_tracker"},
        {"ver", version},
        {"actions",
@@ -49,9 +81,12 @@ inline nlohmann::json buildVisualTrackerAdvert (const std::string& version, cons
                    {"params",
                     Json_de::object(
                         {{"trk", Json_de::object({{"type", "int"}, {"optional", true}, {"desc", "track id from the observation stream"}})},
-                         {"class", Json_de::object({{"type", "string"}, {"optional", true}, {"desc", "class label; empty = any class"}})}})}})},
+                         {"class", Json_de::object({{"type", "string"}, {"optional", true}, {"desc", "class label; empty = any class"}})},
+                         {"cam", cam_param}})}})},
              {"unlock",
-              Json_de::object({{"desc", "stop holding a track"}})},
+              Json_de::object(
+                  {{"desc", "stop holding a track"},
+                   {"params", Json_de::object({{"cam", cam_param}})}})},
              {"track",
               Json_de::object(
                   {{"desc", "track a region of the video frame"},
@@ -70,7 +105,12 @@ inline nlohmann::json buildVisualTrackerAdvert (const std::string& version, cons
                                      {"h", Json_de::object({{"type", "number"}, {"required", true}, {"min", 0.01}, {"max", 1.0}})}})}})}})}})}})},
        {"state",
         Json_de::object(
-            {{"tracking",
+            {{"cam_id",
+              Json_de::object(
+                  {{"type", "string"},
+                   {"default", cam_id},
+                   {"desc", "cam_id of the stream this tracker holds locks on"}})},
+             {"tracking",
               Json_de::object(
                   {{"type", "enum"},
                    {"values", {"lost", "detected", "enabled", "stopped",

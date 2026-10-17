@@ -214,6 +214,9 @@ namespace tracker
             std::string m_source_video_device;
             std::string m_output_video_device;
             std::string m_overlay_target;
+            // camera.cam_id (MP-0217): scopes the visual_tracker capability
+            // namespace to visual_tracker_<cam_id>
+            std::string m_cam_id;
             int m_desired_input_width = 0;
             int m_desired_input_height = 0;
 

@@ -191,6 +191,7 @@ bool CTrackerMain::readConfigParameters() {
   m_source_video_device = "";
   m_output_video_device = "";
   m_overlay_target = "";
+  m_cam_id = "";
   m_desired_input_width = 0;
   m_desired_input_height = 0;
 
@@ -270,6 +271,18 @@ bool CTrackerMain::readConfigParameters() {
       std::cout << _LOG_CONSOLE_BOLD_TEXT
                 << "Overlay target t:" << _INFO_CONSOLE_BOLD_TEXT
                 << m_overlay_target << _NORMAL_CONSOLE_TEXT_ << std::endl;
+    }
+
+    // MP-0217: the module-layer cam_id scopes the visual_tracker
+    // namespace (visual_tracker_<cam_id>) so a mission lock reaches the
+    // tracker serving the camera the observation came from
+    if (camera.contains("cam_id") && camera["cam_id"].is_string()) {
+      m_cam_id = camera["cam_id"].get<std::string>();
+      if (!m_cam_id.empty()) {
+        std::cout << _LOG_CONSOLE_BOLD_TEXT
+                  << "cam_id:" << _INFO_CONSOLE_BOLD_TEXT
+                  << m_cam_id << _NORMAL_CONSOLE_TEXT_ << std::endl;
+      }
     }
 
     // Optional desired input resolution
@@ -836,9 +849,10 @@ void CTrackerMain::publishCapabilityState() {
     lock_state = m_lock.describe();
   }
   m_tracker_facade.publishState(
-      "visual_tracker",
+      de::tracker::visualTrackerNamespace(m_cam_id),
       Json_de::object(
-          {{"tracking", trackingStateName(m_tracker_status)},
+          {{"cam_id", m_cam_id},
+           {"tracking", trackingStateName(m_tracker_status)},
            {"ai", aiStateName(m_ai_tracker_status)},
            {"lock", lock_state}}));
 }
@@ -858,11 +872,12 @@ void CTrackerMain::setupCapabilities() {
     class_names = m_ai_class_names;
   }
 
-  const Json_de advert = de::tracker::buildVisualTrackerAdvert(version_string, class_names);
+  const Json_de advert = de::tracker::buildVisualTrackerAdvert(version_string, class_names, m_cam_id);
 
   if (!m_tracker_facade.setCapabilities({advert.dump()})) {
     std::cout << _ERROR_CONSOLE_BOLD_TEXT_
-              << "capability advert rejected for ns visual_tracker"
+              << "capability advert rejected for ns "
+              << de::tracker::visualTrackerNamespace(m_cam_id)
               << _NORMAL_CONSOLE_TEXT_ << std::endl;
     return;
   }
@@ -955,6 +970,18 @@ Json_de CTrackerMain::onCapabilityInvoke(const std::string &id,
     m_tracker_facade.sendAIRecognitionAction(
         Json_de::object({{"a", TrackingTarget_ACTION_AI_Recognition_DISABLE}}));
     return Json_de::object({{"stopped", true}});
+  }
+
+  if (act == "lock" || act == "unlock") {
+    // MP-0217: a cam routing hint that names another tracker is refused
+    // here too - the invoke should never have reached this instance
+    if (params.contains("cam") && params["cam"].is_string()
+        && !params["cam"].get<std::string>().empty()
+        && params["cam"].get<std::string>() != m_cam_id) {
+      err = "cam '" + params["cam"].get<std::string>() +
+            "' does not match this tracker (cam_id '" + m_cam_id + "')";
+      return Json_de::object();
+    }
   }
 
   if (act == "lock") {
