@@ -16,6 +16,8 @@
 #include <opencv2/tracking.hpp>
 #include <opencv2/tracking/tracking_legacy.hpp>
 #include <thread>
+#include <atomic>
+#include <mutex>
 #include <cstdint>
 #include <cstdlib>
 
@@ -102,7 +104,8 @@ public:
   void track(const float x, const float y, const float radius);
   void trackRect(const float x, const float y, const float w, const float h);
   void trackRect(const float x, const float y, const float w, const float h, bool is_ai_driven);
-  void track2Rect(const float x, const float y, const float w, const float h);
+  void track2Rect(const float x, const float y, const float w, const float h,
+                  const uint64_t session);
   void pause();
   void stop();
   void setCameraDraw(const bool de_camera_draw);
@@ -115,6 +118,17 @@ public:
 
 
 protected:
+  /**
+   * @brief (Re)create m_tracker/m_legacy_tracker for m_active_tracker.
+   * Called once in init() and again on every seeding session: OpenCV
+   * trackers (e.g. KCF) cannot be re-initialized in place - init() on a
+   * used instance "succeeds" but the next update() throws cv::Exception.
+   */
+  void createTracker();
+  // Capture-thread body of track2Rect; the public wrapper catches cv::Exception
+  // so a failed seed/update ends the session instead of aborting the process.
+  void track2RectInternal(const float x, const float y, const float w,
+                          const float h, const uint64_t session);
   bool getVideoResolution(const std::string &video_device_path,
                           unsigned int &width, unsigned int &height);
   bool initTargetVirtualVideoDevice(const std::string &output_video_device);
@@ -131,7 +145,10 @@ protected:
   inline float revScaleY(const float &y) const { return (y / m_image_height); };
 
 private:
-  bool m_process = false;
+  std::atomic<bool> m_process{false};
+  // Bumped on every trackRect/track/stop so a superseded capture session can
+  // detect it is stale and exit instead of racing the new thread.
+  std::atomic<uint64_t> m_tracking_session{0};
   bool m_valid_track;
   bool m_is_ai_driven_reinit = false;  // Flag to suppress "tracking off" during AI reinitializations
 
@@ -173,7 +190,11 @@ private:
   unsigned int m_buffer_count = 0;
   unsigned int m_current_buffer_index = 0;
 
-  // Per-instance tracking thread
+  // Per-instance tracking thread. stop()/trackRect()/track() are normally
+  // called on the bus thread but uninit() runs on the main thread at
+  // shutdown; the mutex serializes join/assign on m_framesThread so two
+  // callers never join() or move-assign the same joinable thread at once.
+  std::mutex m_frames_thread_mutex;
   std::thread m_framesThread;
 
   uint16_t m_frames_to_skip_between_messages = FRAMES_TO_SKIP_BETWEEN_MESSAGES;

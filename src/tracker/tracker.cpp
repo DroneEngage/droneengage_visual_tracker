@@ -99,33 +99,7 @@ bool CTracker::initTargetVirtualVideoDevice(
   return true;
 }
 
-bool CTracker::init(const enum ENUM_TRACKER_TYPE tracker_type,
-                    const std::string &video_path,
-                    const std::string &output_video_device,
-                    uint16_t frames_to_skip_between_messages,
-                    uint16_t frame_to_skip_between_track_process,
-                    int desired_input_width, int desired_input_height,
-                    bool crosshair, bool de_camera_draw) {
-
-  // Enable OpenCV OpenCL acceleration if available for operations like cvtColor
-  cv::ocl::setUseOpenCL(true);
-
-  if (frames_to_skip_between_messages < frame_to_skip_between_track_process) {
-    std::cout << _ERROR_CONSOLE_BOLD_TEXT_
-              << "FATAL ERROR:" << _INFO_CONSOLE_TEXT
-              << " frames_to_skip_between_messages should be larger than "
-                 "frame_to_skip_between_track_process. "
-              << _NORMAL_CONSOLE_TEXT_ << std::endl;
-    return false;
-  }
-
-  m_frames_to_skip_between_messages = frames_to_skip_between_messages;
-  m_frame_to_skip_between_track_process = frame_to_skip_between_track_process;
-  m_crosshair = crosshair;
-  m_de_camera_draw = de_camera_draw;
-
-  m_process = false;
-  m_active_tracker = tracker_type;
+void CTracker::createTracker() {
   switch (m_active_tracker) {
   case ENUM_TRACKER_TYPE::TRACKER_BOOSTING:
     m_islegacy = true;
@@ -166,6 +140,36 @@ bool CTracker::init(const enum ENUM_TRACKER_TYPE tracker_type,
     m_tracker = cv::TrackerCSRT::create();
     break;
   }
+}
+
+bool CTracker::init(const enum ENUM_TRACKER_TYPE tracker_type,
+                    const std::string &video_path,
+                    const std::string &output_video_device,
+                    uint16_t frames_to_skip_between_messages,
+                    uint16_t frame_to_skip_between_track_process,
+                    int desired_input_width, int desired_input_height,
+                    bool crosshair, bool de_camera_draw) {
+
+  // Enable OpenCV OpenCL acceleration if available for operations like cvtColor
+  cv::ocl::setUseOpenCL(true);
+
+  if (frames_to_skip_between_messages < frame_to_skip_between_track_process) {
+    std::cout << _ERROR_CONSOLE_BOLD_TEXT_
+              << "FATAL ERROR:" << _INFO_CONSOLE_TEXT
+              << " frames_to_skip_between_messages should be larger than "
+                 "frame_to_skip_between_track_process. "
+              << _NORMAL_CONSOLE_TEXT_ << std::endl;
+    return false;
+  }
+
+  m_frames_to_skip_between_messages = frames_to_skip_between_messages;
+  m_frame_to_skip_between_track_process = frame_to_skip_between_track_process;
+  m_crosshair = crosshair;
+  m_de_camera_draw = de_camera_draw;
+
+  m_process = false;
+  m_active_tracker = tracker_type;
+  createTracker();
 
   m_video_path = video_path;
 
@@ -301,17 +305,27 @@ void CTracker::pause() {
 }
 
 void CTracker::stop() {
-  if (!m_process)
-    return;
-  m_process = false;
-  m_valid_track = false;
-  if (m_callback_tracker != nullptr) {
+  // m_process only becomes true inside track2Rect after the first frame is
+  // read, so gating on it alone lets a session still in its pre-start window
+  // keep a live joinable thread - which then gets move-assigned over by the
+  // next trackRect (std::terminate) or races the new session on the shared
+  // capture/tracker objects. Gate on joinable() instead.
+  bool had_session;
+  {
+    std::lock_guard<std::mutex> lock(m_frames_thread_mutex);
+    had_session = m_process || m_framesThread.joinable();
+    m_process = false;
+    ++m_tracking_session;  // invalidate any in-flight session
+    m_valid_track = false;
+
+    if (m_framesThread.joinable())
+      m_framesThread.join();
+  }
+
+  if (had_session && m_callback_tracker != nullptr) {
     m_callback_tracker->onTrackStatusChanged(
         TrackingTarget_STATUS_TRACKING_STOPPED);
   }
-
-  if (m_framesThread.joinable())
-    m_framesThread.join();
 
   clearCameraOverlayShape();
 }
@@ -342,8 +356,19 @@ void CTracker::trackRect(const float x, const float y, const float w,
     return;
   }
 
-  m_framesThread =
-      std::thread([x, y, w, h, this]() { this->track2Rect(x, y, w, h); });
+  // Never move-assign over a joinable thread: the previous session may still
+  // be blocked in its pre-start window (camera open / first-frame read) where
+  // m_process is false, so join it before starting the new session.
+  {
+    std::lock_guard<std::mutex> lock(m_frames_thread_mutex);
+    m_process = false;
+    const uint64_t session = ++m_tracking_session;
+    if (m_framesThread.joinable())
+      m_framesThread.join();
+
+    m_framesThread = std::thread(
+        [x, y, w, h, session, this]() { this->track2Rect(x, y, w, h, session); });
+  }
 }
 
 void CTracker::track(const float x, const float y, const float radius) {
@@ -361,12 +386,41 @@ void CTracker::track(const float x, const float y, const float radius) {
     return;
   }
 
-  m_framesThread = std::thread(
-      [x, y, radius, this]() { this->track2Rect(x, y, radius, radius); });
+  {
+    std::lock_guard<std::mutex> lock(m_frames_thread_mutex);
+    m_process = false;
+    const uint64_t session = ++m_tracking_session;
+    if (m_framesThread.joinable())
+      m_framesThread.join();
+
+    m_framesThread = std::thread([x, y, radius, session, this]() {
+      this->track2Rect(x, y, radius, radius, session);
+    });
+  }
 }
 
 void CTracker::track2Rect(const float x, const float y, const float w,
-                          const float h) {
+                          const float h, const uint64_t session) {
+  // A cv::Exception escaping the capture thread is std::terminate -> SIGABRT:
+  // a bad frame or a failed seed must end the session, never the process.
+  try {
+    track2RectInternal(x, y, w, h, session);
+  } catch (const std::exception &e) {
+    std::cerr << _ERROR_CONSOLE_BOLD_TEXT_ << "ERROR:" << _INFO_CONSOLE_TEXT
+              << " tracking session aborted: " << _ERROR_CONSOLE_TEXT_
+              << e.what() << _NORMAL_CONSOLE_TEXT_ << std::endl;
+    if (m_tracking_session == session && m_callback_tracker != nullptr) {
+      m_callback_tracker->onTrackStatusChanged(
+          TrackingTarget_STATUS_TRACKING_STOPPED);
+    }
+  }
+}
+
+void CTracker::track2RectInternal(const float x, const float y, const float w,
+                                  const float h, const uint64_t session) {
+  if (m_tracking_session != session)
+    return;  // superseded before this thread ran
+
   // Pre-allocate Mats to avoid re-allocations in the loop
   // 'frame' will store the captured video frame (BGR)
   // 'yuv_frame' will store the converted YUV frame for streaming
@@ -387,6 +441,8 @@ void CTracker::track2Rect(const float x, const float y, const float w,
 
   // Capture the first frame to get dimensions. This only needs to happen once.
   video_capture >> frame;
+  if (m_tracking_session != session)
+    return;  // superseded while blocked on the first-frame read
   if (frame.empty()) {
     std::cerr << _ERROR_CONSOLE_BOLD_TEXT_ << "ERROR:" << _INFO_CONSOLE_TEXT
               << " First frame is empty from " << _ERROR_CONSOLE_TEXT_
@@ -418,6 +474,11 @@ void CTracker::track2Rect(const float x, const float y, const float w,
                                   x >= 0.0f && y >= 0.0f && 
                                   (x + w) <= 1.0f && (y + h) <= 1.0f);
   if (m_is_tracking_active_initial) {
+    // A fresh tracker per session: OpenCV trackers cannot be re-initialized
+    // in place - e.g. KCF's update() throws cv::Exception after a second
+    // init(). The previous session has been joined by now, so this thread is
+    // the only user of m_tracker/m_legacy_tracker.
+    createTracker();
     // Re-initialize tracker with the new bounding box on the first frame
     if (m_islegacy)
       m_legacy_tracker->init(frame, bbox_2d);
@@ -433,6 +494,8 @@ void CTracker::track2Rect(const float x, const float y, const float w,
           TrackingTarget_STATUS_TRACKING_STOPPED);
   }
 
+  if (m_tracking_session != session)
+    return;  // superseded during seeding
   m_process = true;
   bool track_success = m_is_tracking_active_initial;
   uint64_t frame_counter = 0;
@@ -441,13 +504,15 @@ void CTracker::track2Rect(const float x, const float y, const float w,
       false; // Initialize to false, assuming no track initially
 
   // --- Main Tracking and Streaming Loop ---
-  while (m_process) {
+  while (m_process && m_tracking_session == session) {
     auto start_time = std::chrono::high_resolution_clock::now();
 
     if (!video_capture.read(frame) || frame.empty()) {
       m_consecutive_read_failures++;
       
       if (m_consecutive_read_failures >= MAX_READ_FAILURES) {
+        if (m_tracking_session != session)
+          break;  // superseded session: exit the thread, not the process
         std::cerr << _ERROR_CONSOLE_BOLD_TEXT_ << "FATAL:" << _INFO_CONSOLE_TEXT
                   << " Too many consecutive video read failures (" 
                   << m_consecutive_read_failures << "). Exiting application."
@@ -659,12 +724,16 @@ void CTracker::track2Rect(const float x, const float y, const float w,
     ++frame_counter;
   } // End of while (m_process) loop
 
-  // Only print "tracking off" for non-AI-driven reinitializations
-  if (!m_is_ai_driven_reinit) {
-    std::cout << _LOG_CONSOLE_BOLD_TEXT << "tracking off" << _NORMAL_CONSOLE_TEXT_
-              << std::endl;
+  // A superseded thread exits the loop without touching session flags: the
+  // new session owns m_is_ai_driven_reinit now and tracking is still on.
+  if (m_tracking_session == session) {
+    // Only print "tracking off" for non-AI-driven reinitializations
+    if (!m_is_ai_driven_reinit) {
+      std::cout << _LOG_CONSOLE_BOLD_TEXT << "tracking off" << _NORMAL_CONSOLE_TEXT_
+                << std::endl;
+    }
+
+    // Reset AI-driven flag
+    m_is_ai_driven_reinit = false;
   }
-  
-  // Reset AI-driven flag
-  m_is_ai_driven_reinit = false;
 }
