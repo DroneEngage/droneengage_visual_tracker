@@ -53,6 +53,13 @@ enum ENUM_TRACKER_TYPE {
   TRACKER_CSRT = 7,
 };
 
+/**
+ * @brief Config sentinel for tracker_algorithm_index: pick the algorithm at
+ * startup from total system RAM (CSRT on boards with enough memory, KCF on
+ * low-memory boards). Resolved in CTrackerMain, never reaches CTracker.
+ */
+constexpr int TRACKER_ALGORITHM_AUTO = -1;
+
 class CCallBack_Tracker {
 public:
   virtual void onTrack (const float& x, const float& y, const float& width, const float& height, const bool should_skip_message) = 0;

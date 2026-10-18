@@ -208,6 +208,8 @@ namespace tracker
             bool m_camera_flipped = false;
             uint8_t m_tracking_camera_direction = TRACKING_CAMERA_DIRECTION_NONE;
             de::tracker::ENUM_TRACKER_TYPE m_tracker_algorithm_index = de::tracker::ENUM_TRACKER_TYPE::TRACKER_CSRT;
+            // min total RAM (MB) for AUTO mode to select CSRT; below it KCF is used
+            int m_tracker_auto_csrt_min_mem_mb = 3072;
             bool m_crosshair = true;
             bool m_de_camera_draw = false;
 

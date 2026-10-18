@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <fstream>
 #include <iostream>
 #include <stdio.h>
 #include <cmath>
@@ -15,6 +16,22 @@
 #include "../version.hpp"
 
 using namespace de::tracker;
+
+/**
+ * @brief Total system RAM in MB read from /proc/meminfo, or -1 when it
+ * cannot be determined (non-Linux / unexpected format).
+ */
+static long getSystemMemoryMB() {
+  std::ifstream meminfo("/proc/meminfo");
+  std::string key;
+  long value = -1;
+  std::string unit;
+  while (meminfo >> key >> value >> unit) {
+    if (key == "MemTotal:")
+      return value / 1024;
+  }
+  return -1;
+}
 
 void CTrackerMain::loopScheduler() {
   while (!m_exit_thread) {
@@ -182,9 +199,33 @@ bool CTrackerMain::readConfigParameters() {
 
     Json_de tracking = m_jsonConfig["tracking"];
 
+    if (tracking.contains("tracker_auto_csrt_min_mem_mb")) {
+      m_tracker_auto_csrt_min_mem_mb =
+          tracking["tracker_auto_csrt_min_mem_mb"].get<int>();
+    }
+
     if (tracking.contains("tracker_algorithm_index")) {
-      m_tracker_algorithm_index = tracking["tracker_algorithm_index"]
-                                      .get<de::tracker::ENUM_TRACKER_TYPE>();
+      const int configured_index = tracking["tracker_algorithm_index"].get<int>();
+      if (configured_index == de::tracker::TRACKER_ALGORITHM_AUTO) {
+        const long mem_total_mb = getSystemMemoryMB();
+        m_tracker_algorithm_index =
+            (mem_total_mb >= m_tracker_auto_csrt_min_mem_mb)
+                ? de::tracker::ENUM_TRACKER_TYPE::TRACKER_CSRT
+                : de::tracker::ENUM_TRACKER_TYPE::TRACKER_KCF;
+        std::cout << _LOG_CONSOLE_BOLD_TEXT
+                  << "tracker_algorithm_index AUTO: " << _INFO_CONSOLE_BOLD_TEXT
+                  << "MemTotal=" << mem_total_mb << "MB"
+                  << " threshold=" << m_tracker_auto_csrt_min_mem_mb << "MB"
+                  << " -> "
+                  << (m_tracker_algorithm_index ==
+                              de::tracker::ENUM_TRACKER_TYPE::TRACKER_CSRT
+                          ? "CSRT"
+                          : "KCF")
+                  << _NORMAL_CONSOLE_TEXT_ << std::endl;
+      } else {
+        m_tracker_algorithm_index = static_cast<de::tracker::ENUM_TRACKER_TYPE>(
+            configured_index);
+      }
     }
   }
 

@@ -5,18 +5,20 @@
     "s2s_udp_listening_ip": "127.0.0.1",
     "s2s_udp_listening_port": "60053",
     "s2s_udp_packet_size": "8192",
-    // tracker_algorithm_index: 
+    // tracker_algorithm_index:
+    //   -1 = AUTO: CSRT when total RAM >= tracker_auto_csrt_min_mem_mb
+    //        (default 3072 MB), KCF on low-memory boards.
     /*
-    enum ENUM_TRACKER_TYPE 
+    enum ENUM_TRACKER_TYPE
     {
         TRACKER_BOOSTING    = 0,
-        TRACKER_MIL         = 1,  
+        TRACKER_MIL         = 1,
         TRACKER_KCF         = 2,
-        TRACKER_TLD         = 3,  
+        TRACKER_TLD         = 3,
         TRACKER_MEDIANFLOW  = 4,
-        TRACKER_GOTURN      = 5,  
+        TRACKER_GOTURN      = 5,
         TRACKER_MOSSE       = 6,
-        TRACKER_CSRT        = 7,  
+        TRACKER_CSRT        = 7,
     };
     */
     "camera": {

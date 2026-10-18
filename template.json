@@ -82,7 +82,7 @@
                         "type": "number",
                         "defaultvalue": 7,
                         "optional": false,
-                        "desc": "(0-7)(BOOST,MIL,KCF,TLD,MEDIANFLOW,GOTURN,MOSSE,CSRT)"
+                        "desc": "(0-7)(BOOST,MIL,KCF,TLD,MEDIANFLOW,GOTURN,MOSSE,CSRT), -1=AUTO (CSRT if RAM >= tracker_auto_csrt_min_mem_mb, else KCF)"
                     },
                     "Camera Rotation": {
                         "fieldName": "camera_orientation",
