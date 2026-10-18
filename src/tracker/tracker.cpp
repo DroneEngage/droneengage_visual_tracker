@@ -8,7 +8,6 @@
 #include <thread> // For std::this_thread::sleep_for
 
 #include "../de_common/helpers/colors.hpp"
-#include "../de_common/helpers/helpers.hpp"
 #include "tracker.hpp"
 #include "video.hpp"
 
