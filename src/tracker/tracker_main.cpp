@@ -200,8 +200,12 @@ bool CTrackerMain::readConfigParameters() {
     Json_de tracking = m_jsonConfig["tracking"];
 
     if (tracking.contains("tracker_auto_csrt_min_mem_mb")) {
-      m_tracker_auto_csrt_min_mem_mb =
+      const int configured_min_mem_mb =
           tracking["tracker_auto_csrt_min_mem_mb"].get<int>();
+      // a non-positive threshold would force CSRT even on low-memory boards
+      if (configured_min_mem_mb > 0) {
+        m_tracker_auto_csrt_min_mem_mb = configured_min_mem_mb;
+      }
     }
 
     if (tracking.contains("tracker_algorithm_index")) {
